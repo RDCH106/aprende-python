@@ -11,7 +11,9 @@
         <link rel="icon" type="image/png" href="./brython/favicon.png" />
         <noscript>Please enable Javascript to view this page correctly.</noscript>
 
-        <link rel=stylesheet href="./brython/tests/console.css" />
+        <link rel=stylesheet href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" />
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js" />
 
         <script src="./brython/src/brython.js"></script>
 
@@ -32,24 +34,26 @@
 
 
     <body onload="brython(1)">
-        <table id="banner" cellpadding=0 cellspacing=0>
-            <tr id="banner_row" ></tr>
-        </table>
+        <div class="container-fluid">
+            <table id="banner" cellpadding=0 cellspacing=0>
+                <tr id="banner_row" ></tr>
+            </table>
 
-        <textarea id=code class=codearea rows=20></textarea>
+            <textarea id=code class=codearea rows=20></textarea>
 
-        <div id=content></div>
+            <div id=content></div>
 
-        <script type="text/python3" src="./brython/tests/console.py"></script>
+            <script type="text/python3" src="./brython/tests/console.py"></script>
 
-        <div>
-            The console can be embedded in a web page by adding
-            <blockquote>
-                <pre>
-                    &lt;iframe src=http://brython.info/console.html width=800 height=400&gt;&lt;/iframe&gt;
-                </pre>
-            </blockquote>
+            <div>
+                The console can be embedded in a web page by adding
+                <blockquote>
+                    <pre>
+                        &lt;iframe src=http://brython.info/console.html width=800 height=400&gt;&lt;/iframe&gt;
+                    </pre>
+                </blockquote>
+            </div>
         </div>
-
+        
     </body>
 </html>
