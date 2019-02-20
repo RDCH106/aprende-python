@@ -7,9 +7,12 @@ var _b_ = $B.builtins,
 
 var module = $B.module = {
     __class__ : _b_.type,
-    __module__: "builtins",
     __mro__: [_b_.object],
-    __name__ : "module"
+    $infos: {
+        __module__: "builtins",
+        __name__: "module"
+    },
+    $is_class: true
 }
 
 module.__init__ = function(){}
@@ -24,7 +27,9 @@ module.__new__ = function(cls, name, doc, $package){
 }
 
 module.__repr__ = module.__str__ = function(self){
-    return "<module " + self.__name__ + ">"
+    var res = "<module " + self.__name__
+    if(self.__file__ === undefined){ res += " (built-in)"}
+    return res + ">"
 }
 
 
@@ -57,11 +62,11 @@ function parent_package(mod_name) {
     return parts.join(".")
 }
 
-function $importer(){
-    // returns the XMLHTTP object to handle imports
-    var $xmlhttp = new XMLHttpRequest()
+function $download_module(module, url, $package){
+    $B.xhr = $B.xhr || new XMLHttpRequest()
+    var xhr = $B.xhr,
+        fake_qs
 
-    var fake_qs
     switch ($B.$options.cache) {
         case "version":
             fake_qs = "?v=" + $B.version_info[2]
@@ -73,63 +78,47 @@ function $importer(){
             fake_qs = "?v=" + (new Date().getTime())
     }
 
-    var timer = setTimeout(function(){
-        $xmlhttp.abort()
-        throw _b_.ImportError.$factory("No module named '" + module + "'")
+    var timer = _window.setTimeout(function(){
+            xhr.abort()
+            throw _b_.ImportError.$factory("No module named '" + module + "'")
         }, 5000)
-    return [$xmlhttp, fake_qs, timer]
-}
 
-function $download_module(module, url, $package){
-    var imp = $importer(),
-        $xmlhttp = imp[0],
-        fake_qs = imp[1],
-        timer = imp[2],
-        res = null,
+    var res = null,
         mod_name = module.__name__,
         res,
         t0 = new Date()
 
     $B.download_time = $B.download_time || 0
 
-    $xmlhttp.open("GET", url + fake_qs, false)
+    xhr.open("GET", url + fake_qs, false)
+    xhr.send()
 
     if($B.$CORS){
-      $xmlhttp.onload = function() {
-         if($xmlhttp.status == 200 || $xmlhttp.status == 0){
-            res = $xmlhttp.responseText
-         }else{
-            res = _b_.FileNotFoundError.$factory("No module named '" +
-                mod_name + "'")
-         }
-      }
-      $xmlhttp.onerror = function() {
-         res = _b_.FileNotFoundError.$factory("No module named '" +
-             mod_name + "'")
-      }
+        if(xhr.status == 200 || xhr.status == 0){
+           res = xhr.responseText
+        }else{
+           res = _b_.FileNotFoundError.$factory("No module named '" +
+               mod_name + "'")
+        }
     }else{
-        $xmlhttp.onreadystatechange = function(){
-            if(this.readyState == 4){
-                _window.clearTimeout(timer)
-                if(this.status == 200 || $xmlhttp.status == 0){
-                    res = this.responseText
-                    module.$last_modified =
-                        this.getResponseHeader("Last-Modified")
-                }else{
-                    // don't throw an exception here, it will not be caught
-                    // (issue #30)
-                    console.log("Error " + this.status +
-                        " means that Python module " + mod_name +
-                        " was not found at url " + url)
-                    res = _b_.FileNotFoundError.$factory("No module named '" +
-                        mod_name + "'")
-                }
+        if(xhr.readyState == 4){
+            if(xhr.status == 200 || xhr.status == 0){
+                res = xhr.responseText
+                module.$last_modified =
+                    xhr.getResponseHeader("Last-Modified")
+            }else{
+                // don't throw an exception here, it will not be caught
+                // (issue #30)
+                console.log("Error " + xhr.status +
+                    " means that Python module " + mod_name +
+                    " was not found at url " + url)
+                res = _b_.FileNotFoundError.$factory("No module named '" +
+                    mod_name + "'")
             }
         }
     }
-    if("overrideMimeType" in $xmlhttp){$xmlhttp.overrideMimeType("text/plain")}
-    $xmlhttp.send()
 
+    _window.clearTimeout(timer)
     // sometimes chrome doesn't set res correctly, so if res == null,
     // assume no module found
     if(res == null){
@@ -157,7 +146,7 @@ function import_js(module, path) {
 function run_js(module_contents, path, _module){
     // FIXME : Enhanced module isolation e.g. run_js arg names , globals ...
     try{
-        eval(module_contents)
+        var $module = new Function(module_contents + ";\nreturn $module")()
         if($B.$options.store){_module.$js = module_contents}
     }catch(err){
         console.log(err)
@@ -171,6 +160,17 @@ function run_js(module_contents, path, _module){
         throw _b_.ImportError.$factory("name '$module' is not defined in module")
     }
 
+    $module.__name__ = _module.__name__
+    for(var attr in $module){
+        if(typeof $module[attr] == "function"){
+            $module[attr].$infos = {
+                __module__: _module.__name__,
+                __name__: attr,
+                __qualname__: attr
+            }
+        }
+    }
+
     if(_module !== undefined){
         // FIXME : This might not be efficient . Refactor js modules instead.
         // Overwrite original module object . Needed e.g. for reload()
@@ -182,16 +182,17 @@ function run_js(module_contents, path, _module){
     }else{
         // add class and __str__
         $module.__class__ = module
-        $module.__name__ = _module.name
+        $module.__name__ = _module.__name__
         $module.__repr__ = $module.__str__ = function(){
           if($B.builtin_module_names.indexOf(_module.name) > -1){
-             return "<module '" + _module.name + "' (built-in)>"
+             return "<module '" + _module.__name__ + "' (built-in)>"
           }
-          return "<module '" + _module.name + "' from " + path + " >"
+          return "<module '" + _module.__name__ + "' from " + path + " >"
         }
 
         if(_module.name != "builtins") { // builtins do not have a __file__ attribute
             $module.__file__ = path
+            $B.file_cache[path] = module_contents
         }
     }
     $B.imported[_module.__name__] = $module
@@ -212,6 +213,7 @@ function import_py(module, path, $package){
     // import Python module at specified path
     var mod_name = module.__name__,
         module_contents = $download_module(module, path, $package)
+    module.$src = module_contents
     $B.imported[mod_name].$is_package = module.$is_package
     $B.imported[mod_name].$last_modified = module.$last_modified
     if(path.substr(path.length - 12) == "/__init__.py"){
@@ -231,6 +233,8 @@ function import_py(module, path, $package){
 
 //$B.run_py is needed for import hooks..
 function run_py(module_contents, path, module, compiled) {
+    // set file cache for path ; used in built-in function open()
+    $B.file_cache[path] = module_contents
     var root, js
     if(! compiled){
         var $Node = $B.$Node,
@@ -271,8 +275,11 @@ function run_py(module_contents, path, module, compiled) {
            console.log("code for module " + module.__name__)
            console.log(js)
         }
-        eval(js)
+        js += "; return $module"
+        var module_id = "$locals_" + module.__name__.replace(/\./g, '_')
+        var $module = (new Function(module_id, js))(module) //eval(js)
     }catch(err){
+        /*
         console.log(err + " for module " + module.__name__)
         console.log("module", module)
         console.log(root)
@@ -291,6 +298,7 @@ function run_py(module_contents, path, module, compiled) {
         console.log("filename: " + err.fileName)
         console.log("linenum: " + err.lineNumber)
         if($B.debug > 0){console.log("line info " + $B.line_info)}
+        */
         throw err
     }finally{
         root = null
@@ -312,7 +320,7 @@ function run_py(module_contents, path, module, compiled) {
         $B.imported[module.__name__] = module
         return true
     }catch(err){
-        console.log("" + err + " " + " for module " + module.name)
+        console.log("" + err + " " + " for module " + module.__name__)
         for(var attr in err){console.log(attr + " " + err[attr])}
 
         if($B.debug > 0){console.log("line info " + __BRYTHON__.line_info)}
@@ -333,7 +341,10 @@ function new_spec(fields) {
 var finder_VFS = {
     __class__: _b_.type,
     __mro__: [_b_.object],
-    __name__: "VFSFinder",
+    $infos: {
+        __module__: "builtins",
+        __name__: "VFSFinder"
+    },
 
     create_module : function(cls, spec) {
         // Fallback to default module creation
@@ -350,8 +361,9 @@ var finder_VFS = {
         var path = $B.brython_path + "Lib/" + modobj.__name__
         if(modobj.$is_package){path += "/__init__.py"}
         modobj.__file__ = path
-        if(ext == '.js'){run_js(module_contents, modobj.__path__, modobj)}
-        else if($B.precompiled.hasOwnProperty(modobj.__name__)){
+        if(ext == '.js'){
+            run_js(module_contents, modobj.__path__, modobj)
+        }else if($B.precompiled.hasOwnProperty(modobj.__name__)){
            var parts = modobj.__name__.split(".")
            for(var i = 0; i < parts.length; i++){
                var parent = parts.slice(0, i + 1).join(".")
@@ -365,6 +377,10 @@ var finder_VFS = {
                if(is_package){mod_js=mod_js[0]}
                $B.imported[parent] = module.$factory(parent, undefined, is_package)
                $B.imported[parent].__initialized__ = true
+               $B.imported[parent].__file__ =
+                   $B.imported[parent].__cached__ = "VFS." +
+                       modobj.__name__ + ".py"
+               $B.file_cache[$B.imported[parent].__file__] = module_contents
                if(is_package){
                    $B.imported[parent].__path__ = "<stdlib>"
                    $B.imported[parent].__package__ = parent
@@ -374,18 +390,16 @@ var finder_VFS = {
                    $B.imported[parent].__package__ = elts.join(".")
                }
                try{
-                   eval(mod_js)
+                   var parent_id = parent.replace(/\./g, "_")
+                   mod_js += "return $locals_" + parent_id
+                   var $module = new Function("$locals_" + parent_id, mod_js)(
+                       $B.imported[parent])
                }catch(err){
-                   console.log(mod_js)
-                   console.log(err)
-                   for(var k in err){console.log(k, err[k])}
-                   console.log(Object.keys($B.imported))
-                   throw err
-               }
-               try{
-                   var $module = eval("$locals_" +parent.replace(/\./g, "_"))
-               }catch(err){
-                   console.log("error", parent, mod_js)
+                   if($B.debug > 1){
+                       console.log(err)
+                       for(var k in err){console.log(k, err[k])}
+                       console.log(Object.keys($B.imported))
+                   }
                    throw err
                }
                for(var attr in $module){
@@ -402,11 +416,10 @@ var finder_VFS = {
 
 
         }else{
-            console.log("run Python code from VFS", modobj.__name__)
+            if($B.debug > 1){
+                console.log("run Python code from VFS", modobj.__name__)
+            }
             run_py(module_contents, modobj.__path__, modobj, ext == '.pyc.js')
-        }
-        if($B.debug > 1){
-            console.log("import " + modobj.__name__ + " from VFS")
         }
     },
 
@@ -445,16 +458,18 @@ var finder_VFS = {
     }
 }
 
-finder_VFS.create_module.$type = "classmethod"
-finder_VFS.exec_module.$type = "classmethod"
-finder_VFS.find_module.$type = "classmethod"
-finder_VFS.find_spec.$type = "classmethod"
+$B.set_func_names(finder_VFS, "<import>")
+
+for(var method in finder_VFS){
+    if(typeof finder_VFS[method] == "function"){
+        finder_VFS[method] = _b_.classmethod.$factory(
+            finder_VFS[method])
+    }
+}
 
 finder_VFS.$factory = function(){
     return {__class__: finder_VFS}
 }
-
-$B.set_func_names(finder_VFS, "<import>")
 
 /**
  * Module importer optimizing module lookups via stdlib_paths.js
@@ -464,7 +479,10 @@ var finder_stdlib_static = {
     $factory : finder_stdlib_static,
     __class__ : _b_.type,
     __mro__: [_b_.object],
-    __name__ : "StdlibStatic",
+    $infos: {
+        __module__: "builtins",
+        __name__: "StdlibStatic"
+    },
 
     create_module : function(cls, spec) {
         // Fallback to default module creation
@@ -540,23 +558,29 @@ var finder_stdlib_static = {
     }
 }
 
-finder_stdlib_static.create_module.$type = "classmethod"
-finder_stdlib_static.exec_module.$type = "classmethod"
-finder_stdlib_static.find_module.$type = "classmethod"
-finder_stdlib_static.find_spec.$type = "classmethod"
+$B.set_func_names(finder_stdlib_static, "<import>")
+
+for(var method in finder_stdlib_static){
+    if(typeof finder_stdlib_static[method] == "function"){
+        finder_stdlib_static[method] = _b_.classmethod.$factory(
+            finder_stdlib_static[method])
+    }
+}
 
 finder_stdlib_static.$factory = function (){
     return {__class__: finder_stdlib_static}
 }
 
-$B.set_func_names(finder_stdlib_static, "<import>")
 /**
  * Search an import path for .py modules
  */
 var finder_path = {
     __class__: _b_.type,
     __mro__: [_b_.object],
-    __name__: "ImporterPath",
+    $infos: {
+        __module__: "builtins",
+        __name__: "ImporterPath"
+    },
 
     create_module : function(cls, spec) {
         // Fallback to default module creation
@@ -582,6 +606,12 @@ var finder_path = {
     },
 
     find_spec : function(cls, fullname, path, prev_module) {
+        var current_module = $B.last($B.frames_stack)[2]
+        if($B.VFS && $B.VFS[current_module]){
+            // If current module is in VFS (ie standard library) it's
+            // pointless to search in other locations
+            return _b_.None
+        }
         if($B.is_none(path)){
             // [Import spec] Top-level import , use sys.path
             path = $B.path
@@ -624,16 +654,19 @@ var finder_path = {
     }
 }
 
-finder_path.create_module.$type = "classmethod"
-finder_path.exec_module.$type = "classmethod"
-finder_path.find_module.$type = "classmethod"
-finder_path.find_spec.$type = "classmethod"
+$B.set_func_names(finder_path, "<import>")
+
+for(var method in finder_path){
+    if(typeof finder_path[method] == "function"){
+        finder_path[method] = _b_.classmethod.$factory(
+            finder_path[method])
+    }
+}
 
 finder_path.$factory = function(){
     return {__class__: finder_path}
 }
 
-$B.set_func_names(finder_path, "<import>")
 
 /**
  * Find modules packaged in a js script to be used as a virtual file system
@@ -644,7 +677,10 @@ $B.set_func_names(finder_path, "<import>")
 var vfs_hook = {
     __class__: _b_.type,
     __mro__: [_b_.object],
-    __name__: "VfsPathFinder",
+    $infos: {
+        __module__: "builtins",
+        __name__: "VfsPathFinder"
+    },
 
     load_vfs: function(self) {
         try{var code = $download_module({__name__: "<VFS>"}, self.path)}
@@ -670,6 +706,7 @@ var vfs_hook = {
                 return _b_.None
             }
         }
+        self.__class__.vfs = self.vfs
         var stored = self.vfs[fullname]
         if(stored === undefined){return _b_.None}
         var is_package = stored[2]
@@ -691,6 +728,7 @@ var vfs_hook = {
 
     invalidate_caches: function(self){self.vfs = undefined}
 }
+
 vfs_hook.$factory = function(path) {
     if(path.substr(-1) == '/'){
         path = path.slice(0, -1)
@@ -700,7 +738,6 @@ vfs_hook.$factory = function(path) {
         throw _b_.ImportError.$factory('VFS file URL must end with .vfs.js extension');
     }
     self = {__class__: vfs_hook, path: path}
-    vfs_hook.load_vfs(self)
     return self
 }
 
@@ -716,10 +753,13 @@ $B.set_func_names(vfs_hook, "<import>")
 var url_hook = {
     __class__: _b_.type,
     __mro__: [_b_.object],
-    __name__ : "UrlPathFinder",
     __repr__: function(self) {
         return "<UrlPathFinder" + (self.hint? " for '" + self.hint + "'":
                                    "(unbound)") + " at " + self.path_entry + '>'
+    },
+    $infos: {
+        __module__: "builtins",
+        __name__: "UrlPathFinder"
     },
 
     find_spec : function(self, fullname, module) {
@@ -803,7 +843,7 @@ var _sys_paths = [[$B.script_dir + "/", "py"],
                   [$B.brython_path + "Lib/site-packages/", "py"],
                   [$B.brython_path + "libs/", "js"]]
 
-for(i = 0; i < _sys_paths.length; ++i){
+for(var i = 0; i < _sys_paths.length; ++i){
     var _path = _sys_paths[i],
         _type = _path[1]
     _path = _path[0]
@@ -812,6 +852,12 @@ for(i = 0; i < _sys_paths.length; ++i){
 delete _path
 delete _type
 delete _sys_paths
+
+function import_error(mod_name){
+    var exc = _b_.ImportError.$factory(mod_name)
+    exc.name = mod_name
+    throw exc
+}
 
 // Default __import__ function
 // TODO: Include at runtime in importlib.__import__
@@ -852,9 +898,8 @@ $B.$__import__ = function(mod_name, globals, locals, fromlist, level){
        parsed_name = mod_name.split('.')
    if(modobj == _b_.None){
        // [Import spec] Stop loading loop right away
-       throw _b_.ImportError.$factory(mod_name)
+       import_error(mod_name)
    }
-
    if(modobj === undefined){
        // [Import spec] Argument defaults and preconditions
        // get name of module this was called in
@@ -870,18 +915,17 @@ $B.$__import__ = function(mod_name, globals, locals, fromlist, level){
             var modobj = $B.imported[_mod_name]
             if(modobj == _b_.None){
                 // [Import spec] Stop loading loop right away
-                throw _b_.ImportError.$factory(_mod_name)
+                import_error(_mod_name)
             }else if (modobj === undefined){
                 try{
                     $B.import_hooks(_mod_name, __path__, undefined)
                 }catch(err){
                     delete $B.imported[_mod_name]
-                    $B.imported[_mod_name] = null
                     throw err
                 }
 
                 if($B.is_none($B.imported[_mod_name])){
-                    throw _b_.ImportError.$factory(_mod_name)
+                    import_error(_mod_name)
                 }else{
                     // [Import spec] Preserve module invariant
                     // FIXME : Better do this in import_hooks ?
@@ -906,11 +950,21 @@ $B.$__import__ = function(mod_name, globals, locals, fromlist, level){
                                 module){
                         return $B.imported[_mod_name][parsed_name[len]]
                     }
-                    throw _b_.ImportError.$factory(_mod_name)
+                    import_error(_mod_name)
                 }
             }
        }
-   }
+    }else{
+        if($B.imported[parsed_name[0]] &&
+                parsed_name.length > 1){
+            try{
+                $B.$setattr($B.imported[parsed_name[0]], parsed_name[1], modobj)
+            }catch(err){
+                console.log("error", parsed_name, modobj)
+                throw err
+            }
+        }
+    }
    // else { } // [Import spec] Module cache hit . Nothing to do.
 
    if(fromlist.length > 0){
@@ -988,7 +1042,7 @@ $B.$import = function(mod_name, fromlist, aliases, locals){
         if(alias){
             locals[alias] = $B.imported[mod_name]
         }else{
-            locals[norm_parts[0]] = modobj
+            locals[$B.to_alias(norm_parts[0])] = modobj
             // TODO: After binding 'a' should we also bind 'a.b' , 'a.b.c' , ... ?
         }
     }else{
@@ -1036,16 +1090,20 @@ $B.$import = function(mod_name, fromlist, aliases, locals){
                                 line_num = parseInt(line_elts[0])
                             $B.$SyntaxError(frame[2],
                                 "future feature " + name + " is not defined",
-                                undefined, line_num)
+                                current_frame[3].src, undefined, line_num)
                         }
                         // For other modules, raise ImportError
                         if($err3.$py_error){
-                            var msg = $err3.__class__.__name__ + "\n" +
-                                _b_.getattr($err3, "info")
-                            throw _b_.ImportError.$factory("cannot import name '"+
-                                name + "'\n\n" + msg)
+                            var msg = _b_.getattr($err3, "info") + "\n" +
+                                    $err3.__class__.__name__ + ": " +
+                                    $err3.args[0],
+                                exc = _b_.ImportError.$factory("cannot import name '"+
+                                    name + "'\n\n" + msg)
+                                exc.name = name
+                                throw exc
                         }
                         console.log($err3)
+                        console.log($B.last($B.frames_stack))
                         throw _b_.ImportError.$factory(
                             "cannot import name '" + name + "'")
                     }
@@ -1076,7 +1134,7 @@ var Loader = {__class__:$B.$type,
     __name__ : "Loader"
 }
 
-_importlib_module = {
+var _importlib_module = {
     __class__ : module,
     __name__ : "_importlib",
     Loader: Loader,

@@ -53,7 +53,6 @@ functions as the second argument of Template():
 After a handler function is run, if element.data has changed, the element is
 rendered again, with the new value of element.data.
 """
-import traceback
 from browser import document, html
 
 # HTML elements that don't need a closing tag
@@ -233,8 +232,10 @@ class Template:
         nothing otherwise.
         If the value is of another type, add its string representation.
         """
-        if isinstance(value, bool):
-            self.html += "" if not value else " " + name
+        if value == "False":
+            return
+        elif value == "True":
+            self.html += " " + name
         else:
             self.html += " " + name + '="' + str(value) + '"'
 
@@ -255,6 +256,7 @@ class Template:
         try:
             exec(self.python, ns)
         except Exception as exc:
+            import traceback
             msg = traceback.format_exc()
             if self.element.nodeType != 9:
                 print("Error rendering template:\n" + self.element.outerHTML)
@@ -287,6 +289,7 @@ class Template:
             parent = self.element.parent
             self.element.outerHTML = self.html
             self.element = parent.childNodes[rank]
+
         else:
             # If the template is the document, only reset (inner)html
             self.element.html = self.html

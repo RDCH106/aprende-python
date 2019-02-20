@@ -16,9 +16,9 @@ assert [x for x in foo()]==[]
 
 def foo(n):
     for i in range(2):
-        if (n < 3): 
+        if (n < 3):
             yield 1
-        else: 
+        else:
             return
         yield 2
 
@@ -154,7 +154,7 @@ except ZeroDivisionError:
 assert list(k)==[]
 
 # Specification: Try/Except/Finally
-    
+
 def f():
     try:
         yield 1
@@ -394,7 +394,7 @@ g.close()           # close normally
 def get_list_values_as_int(lst):
     for value in lst:
         yield int(value)
-        
+
 def get_list_values_as_str(lst):
     for value in lst:
         yield str(value)
@@ -405,12 +405,12 @@ def get_list_values_as_float(lst):
 
 
 def get_list_values(lst):
-  for sub in [get_list_values_as_int, 
-              get_list_values_as_str, 
+  for sub in [get_list_values_as_int,
+              get_list_values_as_str,
               get_list_values_as_float]:
     yield from sub(lst)
 
-assert list(get_list_values(["12",6,20.4])) == [12, 
+assert list(get_list_values(["12",6,20.4])) == [12,
     6, 20, '12', '6', '20.4', 12.0, 6.0, 20.4]
 
 # yield inside a "if" or a "else"
@@ -471,5 +471,96 @@ except StopIteration as exc:
 
 # issue 470
 assert eval('bytes(0 for x in [])') == b''
+
+# issue 857
+def f():
+    def x():
+        return 'hello from x'
+    def y():
+        return x()
+    def z():
+        return y()
+    yield z()
+
+g = f()
+
+x = g
+
+assert next(x) == "hello from x"
+try:
+    next(x)
+except StopIteration as stop:
+    pass
+
+# issue 858
+def f():
+    v = 1 + (yield 0)
+    yield v
+
+g = f()
+k = next(g)
+assert k == 0
+assert g.send(k) == 1
+
+# issue 865
+reg = None
+
+def g():
+    def x():
+        return 'hello from x'
+
+    def y():
+        return x()
+
+    global reg
+    reg = y
+
+    yield 0
+
+
+gins = g()
+next(gins)
+
+assert reg() == "hello from x"
+
+# issue 866
+reg = None
+
+def g():
+    x = 'hello from here'
+
+    def y():
+        print(x)
+        yield 0
+
+    global reg
+    reg = y
+
+    yield 0
+
+
+gins = g()
+next(gins)
+
+next(reg())
+
+reg = None
+
+def g():
+    x = 'hello 3'
+
+    def y():
+        yield x
+
+    global reg
+    reg = y
+
+    yield 0
+
+
+gins = g()
+next(gins)
+
+assert next(reg()) == "hello 3"
 
 print('passed all tests...')

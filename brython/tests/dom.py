@@ -69,3 +69,7 @@ try:
     raise Exception("should have raised AttributeError")
 except AttributeError:
     pass
+
+# issue 888
+import javascript
+assert window.jsReturnsUndefined() is javascript.UNDEFINED

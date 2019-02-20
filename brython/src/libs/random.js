@@ -3,7 +3,8 @@
 
 var $module = (function($B){
 
-_b_ = $B.builtins
+var _b_ = $B.builtins,
+    i
 
 var VERSION = 3
 
@@ -449,7 +450,7 @@ Random.gammavariate = function(self, alpha, beta){
         }
     }else if(alpha == 1.0){
         // expovariate(1)
-        var u = _random()
+        var u = self._random()
         while(u <= 1e-7){u = self._random()}
         return -Math.log(u) * beta
     }else{
@@ -532,7 +533,7 @@ Random.getrandbits = function(){
         throw _b_.ValueError.$factory('number of bits must be greater than zero')
     }
     if(k != _b_.int.$factory(k)){
-        throw _b_.TypeError('number of bits should be an integer')
+        throw _b_.TypeError.$factory('number of bits should be an integer')
     }
     var numbytes = (k + 7), // bits / 8 and rounded up
         x = _b_.int.from_bytes(Random._urandom(self, numbytes), 'big')
@@ -709,7 +710,7 @@ Random.sample = function(){
         k = $.k
 
     if(!_b_.hasattr(population, '__len__')){
-        throw _b_.TypeError("Population must be a sequence or set. " +
+        throw _b_.TypeError.$factory("Population must be a sequence or set. " +
             "For dicts, use list(d).")
     }
     var n = _b_.getattr(population, '__len__')()
@@ -770,7 +771,7 @@ Random.seed = function(){
         }else if(_b_.isinstance(a, [_b_.bytes, _b_.bytearray])){
             a = _b_.int.from_bytes(a, 'big')
         }else if(!_b_.isinstance(a, _b_.int)){
-            throw _b_.TypeError('wrong argument')
+            throw _b_.TypeError.$factory('wrong argument')
         }
         if(a.__class__ === $B.long_int){
             // In this implementation, seed() only accepts safe integers
@@ -802,8 +803,8 @@ Random.setstate = function(state){
         self = $.self
     var state = self._random.getstate()
     if(! Array.isArray($.state)){
-        throw _b_.TypeError('state must be a list, not '+
-            $B.get_class($.state).__name__)
+        throw _b_.TypeError.$factory('state must be a list, not ' +
+            $B.class_name($.state))
     }
     if($.state.length < state.length){
         throw _b_.ValueError.$factory("need more than " + $.state.length +
@@ -962,7 +963,7 @@ Random.weibullvariate = function(){
 
     */
     // Jain, pg. 499; bug fix courtesy Bill Arms
-    var $ = $B.args("weibullvariate", 3, 
+    var $ = $B.args("weibullvariate", 3,
         {self: null, alpha: null, beta: null},
         ["self", "alpha", "beta"], arguments, {}, null, null)
 
@@ -988,7 +989,7 @@ var SystemRandom = $B.make_class("SystemRandom",
     }
 )
 SystemRandom.__getattribute__ = function(){
-    throw $B.builtins.NotImplementedError()
+    throw $B.builtins.NotImplementedError.$factory()
 }
 
 $module.SystemRandom = SystemRandom

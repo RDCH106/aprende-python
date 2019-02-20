@@ -3,13 +3,16 @@
 Module to manipulate long integers
 */
 
-eval($B.InjectBuiltins())
+var bltns = $B.InjectBuiltins()
+eval(bltns)
 
 var long_int = {
     __class__: _b_.type,
-    __module__: "builtins",
     __mro__: [int, object],
-    __name__: "int",
+    $infos: {
+        __module__: "builtins",
+        __name__: "int"
+    },
     $is_class: true
 }
 
@@ -50,7 +53,7 @@ function check_shift(shift){
     // Check the argument of >> and <<
     if(! isinstance(shift, long_int)){
         throw TypeError.$factory("shift must be int, not '" +
-            $B.get_class(shift).__name__ + "'")
+            $B.class_name(shift) + "'")
     }
     if(! shift.pos){throw ValueError.$factory("negative shift count")}
 }
@@ -264,12 +267,18 @@ long_int.__abs__ = function(self){
 }
 
 long_int.__add__ = function(self, other){
-
     if(isinstance(other, _b_.float)){
         return _b_.float.$factory(parseInt(self.value) + other.value)
     }
     if(typeof other == "number"){
         other = long_int.$factory(_b_.str.$factory(other))
+    }else if(other.__class__ !== long_int){
+        if(isinstance(other, _b_.bool)){
+            other = long_int.$factory(other ? 1 : 0)
+        }else if(isinstance(other, int)){
+            // int subclass
+            other = long_int.$factory(_b_.str.$factory(_b_.int.__index__(other)))
+        }
     }
 
     // Addition of "self" and "other"
@@ -443,13 +452,15 @@ long_int.__lt__ = function(self, other){
 }
 
 long_int.__lshift__ = function(self, shift){
-    var is_long = shift.__class__ === long_int
+    var is_long = shift.__class__ === long_int,
+        shift_safe
     if(is_long){
         var shift_value = parseInt(shift.value)
         if(shift_value < 0){
             throw _b_.ValueError.$factory('negative shift count')
         }
-        if(shift_value < $B.max_int){shift_safe = true;shift = shift_value}
+        if(shift_value < $B.max_int){
+            shift_safe = true;shift = shift_value}
     }
     if(shift_safe){
         if(shift_value == 0){return self}
@@ -502,11 +513,16 @@ long_int.__mul__ = function(self, other){
     if(isinstance(other, _b_.float)){
         return _b_.float.$factory(parseInt(self.value) * other)
     }
-    if(typeof other == "number"){
-        other = long_int.$factory(_b_.str.$factory(other))
+    other_value = other.value
+    other_pos = other.pos
+    if(other.__class__ !== long_int && isinstance(other, int)){
+        // int subclass
+        var value = int.__index__(other)
+        other_value = _b_.str.$factory(value)
+        other_pos = value > 0
     }
-    var res = mul_pos(self.value, other.value)
-    if(self.pos == other.pos){return intOrLong(res)}
+    var res = mul_pos(self.value, other_value)
+    if(self.pos == other_pos){return intOrLong(res)}
     res.pos = false
     return intOrLong(res)
 }
@@ -534,9 +550,12 @@ long_int.__pos__ = function(self){return self}
 long_int.__pow__ = function(self, power, z){
     if(typeof power == "number"){
         power = long_int.$factory(_b_.str.$factory(power))
+    }else if(isinstance(power, int)){
+        // int subclass
+        power = long_int.$factory(_b_.str.$factory(_b_.int.__index__(power)))
     }else if(! isinstance(power, long_int)){
         var msg = "power must be a LongDict, not '"
-        throw TypeError.$factory(msg + $B.get_class(power).__name__ + "'")
+        throw TypeError.$factory(msg + $B.class_name(power) + "'")
     }
     if(! power.pos){
         if(self.value == "1"){return self}
@@ -631,7 +650,7 @@ long_int.__truediv__ = function(self, other){
         return _b_.float.$factory(parseInt(self.value)/other)
     }else{throw TypeError.$factory(
         "unsupported operand type(s) for /: 'int' and '" +
-        $B.get_class(other).__name__ + "'")}
+        $B.class_name(other) + "'")}
 }
 
 long_int.__xor__ = function(self, other){
@@ -706,10 +725,11 @@ long_int.$factory = function(value, base){
         throw _b_.TypeError.$factory("long_int takes at most 2 arguments (" +
             arguments.length + " given)")
     }
+    //    console.log("long int", value, typeof value, base)
     // base defaults to 10
     if(base === undefined){base = 10}
     else if(!isinstance(base, int)){
-        throw TypeError.$factory("'" + $B.get_class(base).__name__ +
+        throw TypeError.$factory("'" + $B.class_name(base) +
             "' object cannot be interpreted as an integer")
     }
     if(base < 0 || base == 1 || base > 36){
@@ -722,7 +742,7 @@ long_int.$factory = function(value, base){
             return value
         }
         if(value >= 0){value = new Number(Math.round(value.value))}
-        else{value  =new Number(Math.ceil(value.value))}
+        else{value = new Number(Math.ceil(value.value))}
     }else if(isinstance(value, _b_.bool)){
         if(value.valueOf()){return int.$factory(1)}
         return int.$factory(0)
@@ -734,12 +754,17 @@ long_int.$factory = function(value, base){
             throw ValueError.$factory(
                 "argument of long_int is not a safe integer")
         }
-    }else if(value.__class__ === long_int){return value}
-    else if(isinstance(value, _b_.bool)){value = _b_.bool.__int__(value) + ""}
-    else if(typeof value != "string"){
+    }else if(value.__class__ === long_int){
+        return value
+    }else if(isinstance(value, int)){
+        // int subclass
+        value = value.$value + ""
+    }else if(isinstance(value, _b_.bool)){
+        value = _b_.bool.__int__(value) + ""
+    }else if(typeof value != "string"){
         throw ValueError.$factory(
             "argument of long_int must be a string, not " +
-            $B.get_class(value).__name__)
+            $B.class_name(value))
     }
     var has_prefix = false,
         pos = true,
@@ -767,7 +792,7 @@ long_int.$factory = function(value, base){
     // Check if all characters in value are valid in the base
     var is_digits = digits(base),
         point = -1
-    for(var i  =0; i < value.length; i++){
+    for(var i = 0; i < value.length; i++){
         if(value.charAt(i) == "." && point == -1){point = i}
         else if(! is_digits[value.charAt(i)]){
             throw ValueError.$factory(
@@ -779,9 +804,9 @@ long_int.$factory = function(value, base){
         // Conversion to base 10
         var coef = "1",
             v10 = long_int.$factory(0),
-            pos = value.length
-        while(pos--){
-            var digit_base10 = parseInt(value.charAt(pos), base).toString(),
+            ix = value.length
+        while(ix--){
+            var digit_base10 = parseInt(value.charAt(ix), base).toString(),
                 digit_by_coef = mul_pos(coef, digit_base10).value
             v10 = add_pos(v10.value, digit_by_coef)
             coef = mul_pos(coef, base.toString()).value

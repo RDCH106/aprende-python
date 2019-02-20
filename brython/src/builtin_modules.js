@@ -28,7 +28,10 @@
                 var $ = $B.args("bind", 2, {elt: null, evt: null}, ["elt", "evt"],
                     arguments, {}, null, null)
                 return function(callback){
-                    if(_b_.isinstance($.elt, $B.DOMNode)){
+                    if($.elt.__class__ === $B.JSObject){ // eg window
+                        $B.$call($B.$getattr($.elt, "bind"))($.evt, callback)
+                        return callback
+                    }else if(_b_.isinstance($.elt, $B.DOMNode)){
                         // DOM element
                         $B.DOMNode.bind($.elt, $.evt, callback)
                         return callback
@@ -106,11 +109,7 @@
                 var $ = $B.args("run_script", 2, {src: null, name: null},
                     ["src", "name"], arguments, {name: "script_" + $B.UUID()},
                     null, null)
-                if($B.hasOwnProperty("VFS") && $B.has_indexedDB){
-                    $B.tasks.push([$B.idb_open])
-                }
-                $B.run_script($.src, $.name)
-                $B.loop()
+                $B.run_script($.src, $.name, true)
             },
             URLParameter:function(name) {
             name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
@@ -132,7 +131,10 @@
                 // return the dictionary for the class associated with tagName
                 var dict = {
                     __class__: _b_.type,
-                    __name__: tagName
+                    $infos:{
+                        __name__: tagName,
+                        __module__: "browser.html"
+                    }
                 }
 
                 dict.__init__ = function(){
@@ -215,6 +217,7 @@
                         res._wrapped = false  // not wrapped
                     }
                     res.__class__ = cls
+                    res.__dict__ = _b_.dict.$factory()
                     return res
                 }
                 $B.set_func_names(dict, "browser.html")
@@ -230,10 +233,10 @@
                         var res = $B.DOMNode.$factory(elt, true)  // generate the wrapped DOMNode
                         res._wrapped = true  // marked as wrapped
                     }else{
-                        if(klass.__name__ == 'SVG'){
+                        if(klass.$infos.__name__ == 'SVG'){
                             var res = $B.DOMNode.$factory(document.createElementNS("http://www.w3.org/2000/svg", "svg"), true)
                         }else{
-                            var res = $B.DOMNode.$factory(document.createElement(klass.__name__), true)
+                            var res = $B.DOMNode.$factory(document.createElement(klass.$infos.__name__), true)
                         }
                         res._wrapped = false  // not wrapped
                     }
@@ -301,7 +304,7 @@
     modules['browser'] = browser
 
     modules['javascript'] = {
-        __file__:$B.brython_path + '/libs/javascript.js',
+        //__file__:$B.brython_path + '/libs/javascript.js',
         $$this: function(){
             // returns the content of Javascript "this"
             // $B.js_this is set to "this" at the beginning of each function
@@ -346,11 +349,22 @@
     // see https://docs.python.org/3/reference/toplevel_components.html#programs
     var _b_ = $B.builtins
     modules['_sys'] = {
-        __file__:$B.brython_path + '/libs/_sys.js',
+        //__file__:$B.brython_path + '/src/builtin_modules.js',
         // Called "Getframe" because "_getframe" wouldn't be imported in
         // sys.py with "from _sys import *"
         Getframe : function(depth){
             return $B._frame.$factory($B.frames_stack, depth)
+        },
+        exc_info: function(){
+            for(var i = $B.frames_stack.length - 1; i >=0; i--){
+                var frame = $B.frames_stack[i],
+                    exc = frame[1].$current_exception
+                if(exc){
+                    return _b_.tuple.$factory([exc.__class__, exc,
+                        $B.$getattr(exc, "traceback")])
+                }
+            }
+            return _b_.tuple.$factory([_b_.None, _b_.None, _b_.None])
         },
         modules: {
             __get__: function(){
@@ -410,9 +424,6 @@
         module_obj.__class__ = $B.module
         //module_obj.__file__ = '<builtin>'
         module_obj.__name__ = name
-        module_obj.__repr__ = module_obj.__str__ = function(){
-            return "<module '" + name + "' (built-in)>"
-        }
         $B.imported[name] = module_obj
         // set attribute "name" of functions
         for(var attr in module_obj){
@@ -433,12 +444,84 @@
     _b_.__builtins__ = $B.module.$factory('__builtins__',
         'Python builtins')
 
-    for(var attr in $B.builtins){
+    for(var attr in _b_){
         _b_.__builtins__[attr] = _b_[attr]
         $B.builtins_scope.binding[attr] = true
     }
     _b_.__builtins__.__setattr__ = function(attr, value){
         _b_[attr] = value
     }
+
+    $B.method_descriptor.__getattribute__ = $B.Function.__getattribute__
+    $B.wrapper_descriptor.__getattribute__ = $B.Function.__getattribute__
+
+    // Set type of methods of builtin classes
+    for(var name in _b_){
+        if(_b_[name].__class__ === _b_.type){
+            for(var key in _b_[name]){
+                var value = _b_[name][key]
+                if(value === undefined){continue}
+                else if(value.__class__){continue}
+                else if(typeof value != "function"){continue}
+                else if(key == "__new__"){
+                    value.__class__ = $B.builtin_function
+                }else if(key.startsWith("__")){
+                    value.__class__ = $B.wrapper_descriptor
+                }else{
+                    value.__class__ = $B.method_descriptor
+                }
+                value.__objclass__ = _b_[name]
+            }
+        }
+    }
+
+    // Cell objects, for free variables in functions
+    // Must be defined after dict, because property uses it
+    $B.cell = $B.make_class("cell",
+        function(value){
+            return {
+                __class__: $B.cell,
+                $cell_contents: value
+            }
+        }
+    )
+
+    $B.cell.cell_contents = $B.$call(_b_.property)(
+        function(self){
+            if(self.$cell_contents === null){
+                throw _b_.ValueError.$factory("empty cell")
+            }
+            return self.$cell_contents
+        },
+        function(self, value){
+            self.$cell_contents = value
+        }
+    )
+
+    var $comps = Object.values($B.$comps).concat(["eq", "ne"])
+    $comps.forEach(function(comp){
+        var op = "__" + comp + "__"
+        $B.cell[op] = (function(op){
+            return function(self, other){
+                if(! _b_.isinstance(other, $B.cell)){
+                    return NotImplemented
+                }
+                if(self.$cell_contents === null){
+                    if(other.$cell_contents === null){
+                        return op == "__eq__"
+                    }else{
+                        return ["__ne__", "__lt__", "__le__"].indexOf(op) > -1
+                    }
+                }else if(other.$cell_contents === null){
+                    return ["__ne__", "__gt__", "__ge__"].indexOf(op) > -1
+                }
+                return $B.rich_comp(op, self.$cell_contents, other.$cell_contents)
+            }
+        })(op)
+    })
+
+    $B.set_func_names($B.cell, "builtins")
+
+
 
 })(__BRYTHON__)

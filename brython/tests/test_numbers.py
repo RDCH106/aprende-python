@@ -146,4 +146,74 @@ try:
 except FloatCompError:
     pass
 
+# issue 840
+x = 123 ** 20
+y = 123 ** 20
+assert (id(x) != id(y) or x is y)
+
+# PEP 515
+from tester import assertRaises
+
+population = 65_345_123
+assert population == 65345123
+
+population = int("65_345_123")
+assert population == 65345123
+
+assertRaises(ValueError, int, "_12000")
+
+amount = 10_000_000.0
+assert amount == 10000000.0
+
+addr = 0xCAFE_F00D
+assert addr == 0xCAFEF00D
+
+flags = 0b_0011_1111_0100_1110
+assert flags == 0b0011111101001110
+
+flags = int('0b_1111_0000', 2)
+assert flags == 0b11110000
+
+assert complex("8_7.6+2_67J") == (87.6+267j)
+assertRaises(ValueError, complex, "_8_7.6+2_67J")
+assertRaises(ValueError, complex, "8_7.6+_2_67J")
+
+# issue 955
+x = True
+
+try:
+    x.real = 2
+    raise Exception("should have raised AttributeError")
+except AttributeError as exc:
+    assert "is not writable" in exc.args[0]
+
+try:
+    x.foo = "a"
+    raise Exception("should have raised AttributeError")
+except AttributeError as exc:
+    assert "has no attribute 'foo'" in exc.args[0]
+
+# issue 967
+assert not (True == "Toggle")
+assert True == True
+assert True == 1
+assert not (True == 8)
+assert True == 1.0
+assert not (True == 1.1)
+assert not (False == "Toggle")
+assert False == False
+assert False == 0
+assert False == 0.0
+assert not (False == 8)
+
+# issue 982
+try:
+    int("0x505")
+    raise Exception("should have raised ValueError")
+except ValueError:
+    pass
+
+# issue 1001
+assert 1j / 1 == 1j
+assert 1j / 1.0 == 1j
 print('passed all tests...')

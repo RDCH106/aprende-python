@@ -45,8 +45,7 @@ var add_to_res = function(res, key, val) {
 var ajax = {
     __class__: _b_.type,
     __mro__: [$B.JSObject, _b_.object],
-    __name__: 'ajax',
-
+    
     __getattribute__ : function(self, attr){
         // Special case for send : accept dict as parameters
         if(attr == 'send'){
@@ -61,6 +60,11 @@ var ajax = {
     __repr__ : function(self){return '<object Ajax>'},
     __str__ : function(self){return '<object Ajax>'},
 
+    $infos: {
+        __module__: "builtins",
+        __name__: "ajax"
+    },
+
     bind : function(self, evt, func){
         // req.bind(evt,func) is the same as req.onevt = func
         self.js['on' + evt] = function(){
@@ -69,7 +73,7 @@ var ajax = {
             }catch(err){
                 if(err.__class__ !== undefined){
                     var msg = _b_.getattr(err, 'info') +
-                        '\n' + err.__class__.__name__
+                        '\n' + err.__class__.$infos.__name__
                     if(err.args){msg += ': ' + err.args[0]}
                     try{getattr($B.stderr, "write")(msg)}
                     catch(err){console.log(msg)}

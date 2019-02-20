@@ -1,6 +1,7 @@
 ;(function($B){
 
-eval($B.InjectBuiltins())
+var bltns = $B.InjectBuiltins()
+eval(bltns)
 
 var object = _b_.object
 
@@ -12,9 +13,11 @@ var _window = self;
 
 var JSConstructor = {
     __class__: _b_.type,
-    __module__: "<javascript>",
     __mro__: [object],
-    __name__: 'JSConstructor',
+    $infos: {
+        __module__: "<javascript>",
+        __name__: 'JSConstructor'
+    },
     $is_class: true
 }
 
@@ -72,6 +75,8 @@ var Undefined = {
     __class__: UndefinedClass
 }
 
+$B.set_func_names(UndefinedClass, "<javascript>")
+
 var jsobj2pyobj = $B.jsobj2pyobj = function(jsobj) {
     switch(jsobj) {
       case true:
@@ -82,7 +87,9 @@ var jsobj2pyobj = $B.jsobj2pyobj = function(jsobj) {
     if(jsobj === undefined){return $B.Undefined}
     else if(jsobj === null){return _b_.None}
 
-    if(Array.isArray(jsobj)){return _b_.list.$factory(jsobj)}
+    if(Array.isArray(jsobj)){
+        return _b_.list.$factory(jsobj.map(jsobj2pyobj))
+    }
 
     if(typeof jsobj === 'number'){
        if(jsobj.toString().indexOf('.') == -1){return _b_.int.$factory(jsobj)}
@@ -166,7 +173,7 @@ var pyobj2jsobj = $B.pyobj2jsobj = function(pyobj){
             }catch(err){
                 console.log(err)
                 console.log(_b_.getattr(err,'info'))
-                console.log(err.__class__.__name__ + ':',
+                console.log(err.__class__.$infos.__name__ + ':',
                     err.args.length > 0 ? err.args[0] : '' )
                 throw err
             }
@@ -182,9 +189,11 @@ var pyobj2jsobj = $B.pyobj2jsobj = function(pyobj){
 
 var JSObject = {
     __class__: _b_.type,
-    __module__: "<javascript>",
     __mro__: [object],
-    __name__: 'JSObject'
+    $infos:{
+        __module__: "<javascript>",
+        __name__: 'JSObject'
+    }
 }
 
 JSObject.__bool__ = function(self){
@@ -275,13 +284,7 @@ JSObject.__getattribute__ = function(self,attr){
 
                 var result = js_attr.apply(new_this, args)
 
-                // NOTE: fix for situations when wrapped function is constructor (thus it does not return and value is lost)
-                // this has side effect that non-constructor functions returning nothing will return `this` instead, which can break something
-                //
-                if(result === undefined){
-                    result = this
-                }
-                return $B.$JS2Py(result)
+                return jsobj2pyobj(result)
             }
             res.__repr__ = function(){return '<function ' + attr + '>'}
             res.__str__ = function(){return '<function ' + attr + '>'}
@@ -289,7 +292,6 @@ JSObject.__getattribute__ = function(self,attr){
             res.prototype = js_attr.prototype
             return {__class__: JSObject, js: res, js_func: js_attr}
         }else{
-            if(Array.isArray(js_attr)){return js_attr}
             return $B.$JS2Py(js_attr)
         }
     }else if(self.js === _window && attr === '$$location'){
@@ -317,7 +319,7 @@ JSObject.__getattribute__ = function(self,attr){
             return function(){
                 var args = [self]
                 for(var i = 0, len = arguments.length; i < len; i++){
-                    arg = arguments[i]
+                    var arg = arguments[i]
                     if(arg && (arg.__class__ === JSObject ||
                             arg.__class__ === JSConstructor)){
                         args.push(arg.js)
@@ -382,9 +384,9 @@ JSObject.__iter__ = function(self){
         return $B.$iterator(items, $JSObject_iterator)
     }else if(self.js.length !== undefined && self.js.item !== undefined){
         // collection
-        self.js.forEach(function(item){
-            items.push(JSObject.$factory(item))
-        })
+        for(var i = 0; i < self.js.length; i++){
+            items.push(JSObject.$factory(self.js.item(i)))
+        }
         return $B.$iterator(items, $JSObject_iterator)
     }
     // Else iterate on the dictionary built from the JS object
@@ -434,12 +436,12 @@ JSObject.__setattr__ = function(self,attr,value){
                     var info = _b_.getattr(err, 'info')
                     if(err.args.length > 0){
                         err.toString = function(){
-                            return info + '\n' + err.__class__.__name__ +
+                            return info + '\n' + err.__class__.$infos.__name__ +
                             ': ' + _b_.repr(err.args[0])
                         }
                     }else{
                         err.toString = function(){
-                            return info + '\n' + err.__class__.__name__
+                            return info + '\n' + err.__class__.$infos.__name__
                         }
                     }
                     console.log(err + '')
@@ -467,7 +469,7 @@ JSObject.bind = function(self, evt, func){
 
 JSObject.to_dict = function(self){
     // Returns a Python dictionary based on the underlying Javascript object
-    return $B.obj_dict(self.js)
+    return $B.obj_dict(self.js, true)
 }
 
 JSObject.$factory = function(obj){

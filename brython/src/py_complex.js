@@ -1,6 +1,7 @@
 ;(function($B){
 
-eval($B.InjectBuiltins())
+var bltns = $B.InjectBuiltins()
+eval(bltns)
 
 var object = _b_.object
 
@@ -12,7 +13,10 @@ function $UnsupportedOpType(op, class1, class2){
 var complex = {
     __class__: _b_.type,
     __dir__: object.__dir__,
-    __name__: "complex",
+    $infos: {
+        __module__: "builtins",
+        __name__: "complex"
+    },
     $is_class: true,
     $native: true,
     $descriptors: {real: true, imag: true}
@@ -109,51 +113,72 @@ complex.__new__ = function(cls){
         throw _b_.TypeError.$factory('complex.__new__(): not enough arguments')
     }
     var res,
+        missing = {},
         args = $B.args("complex", 3, {cls: null, real: null, imag: null},
-        ["cls", "real", "imag"], arguments, {real: 0, imag: 0}, null, null),
+            ["cls", "real", "imag"], arguments, {real: 0, imag: missing}, null, null),
         $real = args.real,
         $imag = args.imag
+
     if(typeof $real == "string"){
-        if(arguments.length > 1 || arguments[0].$nat !== undefined){
+        if($imag !== missing){
             throw _b_.TypeError.$factory("complex() can't take second arg " +
                 "if first is a string")
-        }
-        $real = $real.trim()
-        if($real.startsWith("(") && $real.endsWith(")")){
-            $real = $real.substr(1)
-            $real = $real.substr(0, $real.length - 1)
-        }
-        var parts = complex_re.exec($real)
-        if(parts === null){
-            throw _b_.ValueError.$factory("complex() arg is a malformed string")
-        }else if(parts[_real] == "." || parts[_imag] == "." ||
-                parts[_real] == ".e" || parts[_imag] == ".e" ||
-                parts[_real] == "e" || parts[_imag] == "e"){
-            throw _b_.ValueError.$factory("complex() arg is a malformed string")
-        }else if(parts[_j] != ""){
-            if(parts[_sign] == ""){
-                $real = 0
-                if(parts[_real] == "+" || parts[_real] == ""){
-                    $imag = 1
-                }else if (parts[_real] == '-'){
-                    $imag = -1
-                }else{$imag = parseFloat(parts[_real])}
-            }else{
-                $real = parseFloat(parts[_real])
-                $imag = parts[_imag] == "" ? 1 : parseFloat(parts[_imag])
-                $imag = parts[_sign] == "-" ? -$imag : $imag
-            }
         }else{
-            $real = parseFloat(parts[_real])
-            $imag = 0
+            var arg = $real
+            $real = $real.trim()
+            if($real.startsWith("(") && $real.endsWith(")")){
+                $real = $real.substr(1)
+                $real = $real.substr(0, $real.length - 1)
+            }
+            // Regular expression for literal complex string. Includes underscores
+            // for PEP 515
+            var complex_re = /^\s*([\+\-]*[0-9_]*\.?[0-9_]*(e[\+\-]*[0-9_]*)?)([\+\-]?)([0-9_]*\.?[0-9_]*(e[\+\-]*[0-9_]*)?)(j?)\s*$/i
+
+            var parts = complex_re.exec($real)
+
+            function to_num(s){
+                var res = parseFloat(s.charAt(0) + s.substr(1).replace(/_/g, ""))
+                if(isNaN(res)){
+                    throw _b_.ValueError.$factory("could not convert string " +
+                        "to complex: '" + arg +"'")
+                }
+                return res
+            }
+            if(parts === null){
+                throw _b_.ValueError.$factory("complex() arg is a malformed string")
+            }else if(parts[_real] == "." || parts[_imag] == "." ||
+                    parts[_real] == ".e" || parts[_imag] == ".e" ||
+                    parts[_real] == "e" || parts[_imag] == "e"){
+                throw _b_.ValueError.$factory("complex() arg is a malformed string")
+            }else if(parts[_j] != ""){
+                if(parts[_sign] == ""){
+                    $real = 0
+                    if(parts[_real] == "+" || parts[_real] == ""){
+                        $imag = 1
+                    }else if (parts[_real] == '-'){
+                        $imag = -1
+                    }else{$imag = to_num(parts[_real])}
+                }else{
+                    $real = to_num(parts[_real])
+                    $imag = parts[_imag] == "" ? 1 : to_num(parts[_imag])
+                    $imag = parts[_sign] == "-" ? -$imag : $imag
+                }
+            }else{
+                $real = to_num(parts[_real])
+                $imag = 0
+            }
+            res = {
+                __class__: complex,
+                $real: $real || 0,
+                $imag: $imag || 0
+            }
+            return res
         }
-        res = {
-            __class__: complex,
-            $real: $real || 0,
-            $imag: $imag || 0
-        }
-        return res
     }
+
+    // If first argument is not a string, the second argument defaults to 0
+    $imag = $imag === missing ? 0 : $imag
+
     if(arguments.length == 1 && $real.__class__ === complex && $imag == 0){
         return $real
     }
@@ -167,7 +192,7 @@ complex.__new__ = function(cls){
         return res
     }
 
-    for(i = 0; i < type_conversions.length; i++){
+    for(var i = 0; i < type_conversions.length; i++){
         if(hasattr($real, type_conversions[i])){
 
         }
@@ -183,11 +208,11 @@ complex.__new__ = function(cls){
         throw _b_.TypeError.$factory("complex() second arg can't be a string")
     }
     if(! isinstance($imag, _b_.float) && ! isinstance($imag, _b_.int) &&
-            ! isinstance($imag, _b_.complex) && $imag !== undefined){
+            ! isinstance($imag, _b_.complex) && $imag !== missing){
         throw _b_.TypeError.$factory("complex() argument must be a string " +
             "or a number")
     }
-    $imag = complex.__mul__(complex("1j"), $imag)
+    $imag = complex.__mul__(complex.$factory("1j"), $imag)
     return complex.__add__($imag, $real)
 }
 
@@ -225,7 +250,7 @@ complex.__pow__ = function(self, other){
     }else{
         throw _b_.TypeError.$factory("unsupported operand type(s) " +
             "for ** or pow(): 'complex' and '" +
-            $B.get_class(other).__name__ + "'")
+            $B.class_name(other) + "'")
     }
 }
 
@@ -280,13 +305,13 @@ complex.__truediv__ = function(self, other){
         if(! other.valueOf()){
             throw ZeroDivisionError.$factory('division by zero')
         }
-        return complex.__truediv__(self, complex(other.valueOf()))
+        return complex.__truediv__(self, complex.$factory(other.valueOf()))
     }
     if(isinstance(other, _b_.float)){
-        if(! other.value){
+        if(! other.valueOf()){
             throw ZeroDivisionError.$factory("division by zero")
         }
-        return complex.__truediv__(self, complex(other.value))
+        return complex.__truediv__(self, complex.$factory(other.valueOf()))
     }
     $UnsupportedOpType("//", "complex", other.__class__)
 }
@@ -298,7 +323,7 @@ complex.conjugate = function(self) {
 // operators
 var $op_func = function(self, other){
     throw _b_.TypeError.$factory("TypeError: unsupported operand type(s) " +
-        "for -: 'complex' and '" + $B.get_class(other).__name__ + "'")
+        "for -: 'complex' and '" + $B.class_name(other) + "'")
 }
 $op_func += "" // source code
 var $ops = {"&": "and", "|": "ior", "<<": "lshift", ">>": "rshift",
@@ -326,7 +351,7 @@ var $op_func = function(self,other){
          return make_complex(self.$real - bool_value, self.$imag)
     }
     throw _b_.TypeError.$factory("unsupported operand type(s) for -: " +
-        self.__repr__() + " and '" + $B.get_class(other).__name__ + "'")
+        self.__repr__() + " and '" + $B.class_name(other) + "'")
 }
 complex.__sub__ = $op_func
 
@@ -337,7 +362,7 @@ eval("complex.__add__ = " + $op_func)
 // comparison methods
 var $comp_func = function(self, other){
     if(other === undefined || other == _b_.None){
-        throw _b_.NotImplemented("")
+        return _b_.NotImplemented
     }
     throw _b_.TypeError.$factory("TypeError: no ordering relation " +
         "is defined for complex numbers")
@@ -361,7 +386,6 @@ complex.imag.setter = function(){
     throw _b_.AttributeError.$factory("readonly attribute")
 }
 
-var complex_re = /^\s*([\+\-]*\d*\.?\d*(e[\+\-]*\d*)?)([\+\-]?)(\d*\.?\d*(e[\+\-]*\d*)?)(j?)\s*$/i
 var _real = 1,
     _real_mantissa = 2,
     _sign = 3,
@@ -370,7 +394,7 @@ var _real = 1,
     _j = 6
 var type_conversions = ["__complex__", "__float__", "__int__"]
 var _convert = function(num){
-    for(i = 0; i < type_conversions.length; i++) {
+    for(var i = 0; i < type_conversions.length; i++) {
         if(hasattr(num, type_conversions[i])) {
             return getattr(num, type_conversions[i])()
         }
@@ -378,7 +402,7 @@ var _convert = function(num){
     return num
 }
 
-$B.make_complex = make_complex = function(real, imag){
+var make_complex = $B.make_complex = function(real, imag){
     return {
         __class__: complex,
         $real: real,

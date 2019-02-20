@@ -1,7 +1,8 @@
 var $module = (function($B){
 
-var _b_ = $B.builtins
-var $s = []
+var _b_ = $B.builtins,
+    $s = [],
+    i
 for(var $b in _b_){$s.push('var ' + $b +' = _b_["'+$b+'"]')}
 eval($s.join(';'))
 
@@ -365,6 +366,23 @@ var _mod = {
 
          return d1 * d2 * Math.pow(z + 5.5, z + 0.5) * Math.exp(-(z + 5.5))
     },
+    gcd: function(){
+        var $ = $B.args("gcd", 2, {a: null, b: null}, ['a', 'b'],
+                arguments, {}, null, null),
+            a = $B.PyNumber_Index($.a),
+            b = $B.PyNumber_Index($.b)
+        if(a == 0 && b == 0){return 0}
+        // https://stackoverflow.com/questions/17445231/js-how-to-find-the-greatest-common-divisor
+        a = Math.abs(a);
+        b = Math.abs(b);
+        if(b > a){var temp = a; a = b; b = temp;}
+        while(true){
+            if(b == 0){return a}
+            a %= b
+            if(a == 0){return b}
+            b %= a
+        }
+    },
     hypot: function(x,y){
        if(_b_.$isinf(x) || _b_.$isinf(y)){return float.$factory('inf')}
        var x1 = float_check(x),
@@ -442,7 +460,7 @@ var _mod = {
            return _b_.tuple.$factory([0.0, float.$factory('inf')])
        }
        if(isNaN(x)){
-           return _b_.tuple.$factory([float.$factory('nan'), 
+           return _b_.tuple.$factory([float.$factory('nan'),
                float.$factory('nan')])
        }
 

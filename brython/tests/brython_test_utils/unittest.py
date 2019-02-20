@@ -1,4 +1,4 @@
-
+from browser import window
 import brython_test_utils as utils
 import unittest
 
@@ -15,15 +15,14 @@ class BrythonModuleTestCase(unittest.TestCase):
         return "Brython test module '%s'" % self.caption
 
     def runTest(self):
-        status, tstart, tend, msg, aio_manager = utils.run_test_module(self.modname,
-                                                     self.base_path)
+        status, tstart, tend, msg = utils.run_test_module(self.modname, self.base_path)
         # TODO: Record and output generated traceback
         if not status == 1:
             raise self.failureException("Failure detected for module '%s'\n\n"
                           "%s" % (self.modname, msg))
 
 
-def qunit_test(test, result):
+def qunit_test(testName, test, result):
     def wrapped_test(qunit):
         test(result)
         if result.details:
@@ -31,6 +30,11 @@ def qunit_test(test, result):
         else:
             msg = ''
         qunit.ok(result.wasSuccessful(), msg)
+        if result.lastOutcome == 'SKIP':
+            # QUnit can't skip tests based on runtime behavior, so this is
+            # a bit of a hack. This adds a new test with the same name
+            # as the currently running test and marks that it should be skipped.
+            window.QUnit.skip(testName)
     return wrapped_test
 
 
@@ -81,7 +85,7 @@ class OneTimeTestResult(unittest.TestResult):
         self.details = 'Expecting failure but got success instead'
 
     def wasSuccessful(self):
-        return self.lastOutcome == 'OK'
+        return self.lastOutcome == 'OK' or self.lastOutcome == 'SKIP'
 
     def __repr__(self):
         return "<%s run=%i last=%s>" % (unittest.util.strclass(self.__class__),

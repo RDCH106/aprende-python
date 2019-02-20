@@ -23,7 +23,6 @@ var $mod = {
     algorithms_available:  ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
 }
 
-
 //todo: eventually move this function to a "utility" file or use ajax module?
 function $get_CryptoJS_lib(alg){
     if($B.VFS !== undefined){
@@ -41,46 +40,23 @@ function $get_CryptoJS_lib(alg){
                 "Cannot eval CryptoJS algorithm '" + alg + "' : error:" + err)
         }
     }
-   var imp = $importer(),
-       $xmlhttp = imp[0],
-       fake_qs = imp[1],
-       timer = imp[2],
-       res = null
 
-   $xmlhttp.onreadystatechange = function(){
-        if($xmlhttp.readyState == 4){
-            window.clearTimeout(timer)
-            if($xmlhttp.status == 200 || $xmlhttp.status == 0){
-                res = $xmlhttp.responseText
-            }else{
-                // don't throw an exception here, it will not be caught (issue #30)
-                res = Error()
-                res.name = 'NotFoundError'
-                res.message = "No CryptoJS lib named '" + alg + "'"
-            }
-        }
-   }
+    var module = {__name__: 'CryptoJS', $is_package: false}
+    var res = $B.$download_module(module, $B.brython_path + 'libs/crypto_js/rollups/' + alg + '.js');
 
-   $xmlhttp.open('GET', $B.brython_path + 'libs/crypto_js/rollups/' + alg +
-       '.js' + fake_qs, false)
-   if('overrideMimeType' in $xmlhttp){$xmlhttp.overrideMimeType("text/plain")}
-   $xmlhttp.send()
-   if(res.constructor === Error){throw res} // module not found
-
-   try{
-      eval(res + "; $B.CryptoJS = CryptoJS;")
-   }catch (err){
-      throw Error("JS Eval Error",
-          "Cannot eval CryptoJS algorithm '" + alg + "' : error:" + err)
-   }
+    try{
+        eval(res + "; $B.CryptoJS = CryptoJS;")
+    }catch(err){
+        throw Error("JS Eval Error",
+            "Cannot eval CryptoJS algorithm '" + alg + "' : error:" + err)
+    }
 }
 
 function bytes2WordArray(obj){
     // Transform a bytes object into an instance of class WordArray
     // defined in CryptoJS
     if(!_b_.isinstance(obj, _b_.bytes)){
-        throw _b_.TypeError("expected bytes, got " +
-            $B.get_class(obj).__name__)
+        throw _b_.TypeError("expected bytes, got " + $B.class_name(obj))
     }
 
     var words = []
@@ -96,7 +72,9 @@ function bytes2WordArray(obj){
 var hash = {
     __class__: _b_.type,
     __mro__: [_b_.object],
-    __name__: 'hash'
+    $infos:{
+        __name__: 'hash'
+    }
 }
 
 hash.update = function(self, msg){
@@ -142,7 +120,7 @@ hash.$factory = function(alg, obj) {
         }
         break
       default:
-        $raise('AttributeError', 'Invalid hash algorithm:' + alg)
+        throw $B.builtins.AttributeError.$factory('Invalid hash algorithm: ' + alg)
     }
 
     return res

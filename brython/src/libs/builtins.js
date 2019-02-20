@@ -1,5 +1,8 @@
 var $module = (function(){
-    var obj = {__class__: __BRYTHON__.module, __name__: 'builtins'},
+    var obj = {
+        __class__: __BRYTHON__.module,
+        __name__: 'builtins'
+    },
         builtin_names = ['ArithmeticError', 'AssertionError', 'AttributeError',
     'BaseException', 'BlockingIOError', 'BrokenPipeError', 'BufferError',
     'BytesWarning', 'ChildProcessError', 'ConnectionAbortedError',
@@ -27,7 +30,9 @@ var $module = (function(){
     'memoryview', 'min', 'next', 'object', 'oct', 'open', 'ord', 'pow', 'print',
     'property', 'quit', 'range', 'repr', 'reversed', 'round', 'set', 'setattr',
     'slice', 'sorted', 'staticmethod', 'str', 'sum', 'super', 'tuple', 'type',
-    'vars', 'zip']
+    'vars', 'zip',
+    '__newobj__' // defined in py_objects.js ; required for pickle
+    ]
     for(var i = 0, len = builtin_names.length; i < len; i++){
         try{eval("obj['" + builtin_names[i] + "'] = __BRYTHON__.builtins." +
             builtin_names[i])}

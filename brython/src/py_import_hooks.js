@@ -51,7 +51,9 @@ for(var i = 0, len = _meta_path.length; i < len; i++){
 
 if(_loader === undefined){
     // No import spec found
-    throw _b_.ImportError.$factory("No module named " + mod_name)
+    var exc = _b_.ImportError.$factory("No module named " + mod_name)
+    exc.name = mod_name
+    throw exc
 }
 
 // Import spec represents a match
@@ -62,7 +64,7 @@ if($B.is_none(module)){
     if(!$B.is_none(_loader)){
         var create_module = _b_.getattr(_loader, "create_module", _b_.None)
         if(!$B.is_none(create_module)){
-            module = $B.$call(create_module)(_loader, spec)
+            module = $B.$call(create_module)(spec)
         }
     }
     if(module === undefined){throw _b_.ImportError.$factory(mod_name)}

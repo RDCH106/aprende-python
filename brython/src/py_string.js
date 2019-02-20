@@ -1,6 +1,7 @@
 ;(function($B){
 
-eval($B.InjectBuiltins())
+var bltns = $B.InjectBuiltins()
+eval(bltns)
 
 if(!String.prototype.trim){
     // Polyfill for older browsers
@@ -66,7 +67,10 @@ var object = _b_.object
 var str = {
     __class__: _b_.type,
     __dir__: object.__dir__,
-    __name__: "str",
+    $infos: {
+        __module__: "builtins",
+        __name__: "str"
+    },
     $is_class: true,
     $native: true
 }
@@ -98,7 +102,7 @@ function reverse(s){
 function check_str(obj){
     if(! _b_.isinstance(obj, str)){
         throw _b_.TypeError.$factory("can't convert '" +
-            $B.get_class(obj).__name__ + "' object to str implicitly")
+            $B.class_name(obj) + "' object to str implicitly")
     }
 }
 
@@ -107,7 +111,7 @@ str.__add__ = function(self,other){
         try{return getattr(other, "__radd__")(self)}
         catch(err){
             throw _b_.TypeError.$factory("Can't convert " +
-                $B.get_class(other).__name__ + " to str implicitly")}
+                $B.class_name(other) + " to str implicitly")}
     }
     return self + other
 }
@@ -141,7 +145,7 @@ str.__eq__ = function(self,other){
     if(_b_.isinstance(other, _b_.str)){
        return other.valueOf() == self.valueOf()
     }
-    return other === self.valueOf()
+    return _b_.NotImplemented
 }
 
 function preformat(self, fmt){
@@ -191,20 +195,30 @@ str.__getitem__ = function(self,arg){
     throw _b_.TypeError.$factory("string indices must be integers")
 }
 
+var prefix = 2,
+    suffix = 3,
+    mask = (2 ** 32 - 1)
+function fnv(p){
+    if(p.length == 0){
+        return 0
+    }
+
+    var x = prefix
+    x = (x ^ (p.charCodeAt(0) << 7)) & mask
+    for(var i = 0, len = p.length; i < len; i++){
+        x = ((1000003 * x) ^ p.charCodeAt(i)) & mask
+    }
+    x = (x ^ p.length) & mask
+    x = (x ^ suffix) & mask
+
+    if(x == -1){
+        x = -2
+    }
+    return x
+}
+    
 str.__hash__ = function(self) {
-  if(self === undefined){
-     return str.__hashvalue__ || $B.$py_next_hash--  // for hash of string type (not instance of string)
-  }
-
-  //http://stackoverflow.com/questions/2909106/python-whats-a-correct-and-good-way-to-implement-hash
-  // this implementation for strings maybe good enough for us..
-
-  var hash = 1
-  for(var i = 0, len = self.length; i < len; i++){
-      hash = (101 * hash + self.charCodeAt(i)) & 0xFFFFFFFF
-  }
-
-  return hash
+  return fnv(self)
 }
 
 str.__init__ = function(self, arg){
@@ -743,7 +757,7 @@ str.__mod__ = function(self, args) {
                             cls = typeof(self)
                         }
                     }else{
-                        cls = cls.__name__
+                        cls = cls.$infos.__name__
                     }
                     throw _b_.TypeError.$factory("%" + try_char +
                         " format: a number is required, not " + cls)
@@ -803,7 +817,7 @@ str.__mul__ = function(){
         ["self", "other"], arguments, {}, null, null)
     if(! isinstance($.other, _b_.int)){throw _b_.TypeError.$factory(
         "Can't multiply sequence by non-int of type '" +
-            $B.get_class($.other).__name__ + "'")}
+            $B.class_name($.other) + "'")}
     var $res = ""
     for(var i = 0; i< $.other; i++){$res += $.self.valueOf()}
     return $res
@@ -812,9 +826,16 @@ str.__mul__ = function(){
 str.__ne__ = function(self,other){return other !== self.valueOf()}
 
 str.__repr__ = function(self){
-    var res = self.replace(/\n/g,"\\\\n")
+    var res = self
     // escape the escape char
-    res = res.replace(/\\/g, "\\\\")
+    res = self.replace(/\\/g, "\\\\")
+    // special cases
+    res = res.replace(new RegExp("\u0007", "g"), "\\x07").
+              replace(new RegExp("\b", "g"), "\\x08").
+              replace(new RegExp("\f", "g"), "\\x0c").
+              replace(new RegExp("\n", "g"), "\\n").
+              replace(new RegExp("\r", "g"), "\\r").
+              replace(new RegExp("\t", "g"), "\\t")
     if(res.search('"') == -1 && res.search("'") == -1){
         return "'" + res + "'"
     }else if(self.search('"') == -1){
@@ -829,16 +850,16 @@ str.__setitem__ = function(self, attr, value){
     throw _b_.TypeError.$factory(
         "'str' object does not support item assignment")
 }
+
 str.__str__ = function(self){
-    if(self === undefined){return "<class 'str'>"}
-    return self.toString()
+    return self
 }
 str.toString = function(){return "string!"}
 
 // generate comparison methods
 var $comp_func = function(self,other){
     if(typeof other !== "string"){throw _b_.TypeError.$factory(
-        "unorderable types: 'str' > " + $B.get_class(other).__name__ + "()")}
+        "unorderable types: 'str' > " + $B.class_name(other) + "()")}
     return self > other
 }
 $comp_func += "" // source code
@@ -876,7 +897,7 @@ var from_unicode = [
     "swapcase",
     "upper"
 ]
-
+// uses the object unicode, defined in unicode.min.js
 from_unicode.forEach(function(name){
     str[name] = unicode[name]
 })
@@ -901,7 +922,7 @@ str.count = function(){
         ["self", "sub", "start", "stop"], arguments, {start:null, stop:null},
         null, null)
     if(!(typeof $.sub == "string")){throw _b_.TypeError.$factory(
-        "Can't convert '" + $B.get_class($.sub).__name__ +
+        "Can't convert '" + $B.class_name($.sub) +
         "' object to str implicitly")}
     var substr = $.self
     if($.start !== null){
@@ -1031,7 +1052,7 @@ str.find = function(){
 
 // Next function used by method .format()
 
-function parse_format(fmt_string){
+$B.parse_format = function(fmt_string){
 
     // Parse a "format string", as described in the Python documentation
     // Return a format object. For the format string
@@ -1061,9 +1082,6 @@ function parse_format(fmt_string){
     if(elts.length > 1){
         name = elts[0]
         conv = elts[1] // conversion flag
-        if(conv.length !== 1 || "ras".search(conv) == -1){
-            throw _b_.ValueError.$factory("wrong conversion flag " + conv)
-        }
     }
 
     if(name !== undefined){
@@ -1078,13 +1096,10 @@ function parse_format(fmt_string){
     }
 
     return {name: name, name_ext: name_ext,
-        conv: conv, spec: spec || ""}
+        conv: conv, spec: spec || "", string: fmt_string}
 }
 
-str.format = function(self) {
-    var $ = $B.args("format", 1, {self: null}, ["self"],
-        arguments, {}, "$args", "$kw")
-
+$B.split_format = function(self){
     // Parse self to detect formatting instructions
     // Create a list "parts" made of sections of the string :
     // - elements of even rank are literal text
@@ -1128,7 +1143,9 @@ str.format = function(self) {
                         var fmt_string = self.substring(pos + 1, end - 1)
 
                         // Create a format object, by function parse_format
-                        var fmt_obj = parse_format(fmt_string)
+                        var fmt_obj = $B.parse_format(fmt_string)
+                        fmt_obj.raw_name = fmt_obj.name
+                        fmt_obj.raw_spec = fmt_obj.spec
 
                         // If no name is explicitely provided, use the rank
                         if(!fmt_obj.name){
@@ -1138,20 +1155,16 @@ str.format = function(self) {
 
                         if(fmt_obj.spec !== undefined){
                             // "spec" may contain "nested replacement fields"
-                            // In this case, evaluate them using the positional
-                            // or keyword arguments passed to format()
+                            // Replace empty fields by the rank in positional
+                            // arguments
                             function replace_nested(name, key){
-                                if(/\d+/.exec(key)){
-                                    // If key is numeric, search in positional
-                                    // arguments
-                                    return _b_.tuple.__getitem__($.$args,
-                                        parseInt(key))
-                                }else{
-                                    // Else try in keyword arguments
-                                    return _b_.dict.__getitem__($.$kw, key)
+                                if(key == ""){
+                                    // Use implicit rank
+                                    return "{" + rank++ + "}"
                                 }
+                                return "{" + key + "}"
                             }
-                            fmt_obj.spec = fmt_obj.spec.replace(/\{(.+?)\}/g,
+                            fmt_obj.spec = fmt_obj.spec.replace(/\{(.*?)\}/g,
                                 replace_nested)
                         }
 
@@ -1167,15 +1180,44 @@ str.format = function(self) {
         }else{text += car; pos++}
     }
     if(text){parts.push(text)}
+    return parts
+}
+
+str.format = function(self) {
+    var $ = $B.args("format", 1, {self: null}, ["self"],
+        arguments, {}, "$args", "$kw")
+
+    var parts = $B.split_format($.self)
+
     // Apply formatting to the values passed to format()
     var res = "",
         fmt
+
     for(var i = 0; i < parts.length; i++){
         // Literal text is added unchanged
         if(typeof parts[i] == "string"){res += parts[i]; continue}
 
         // Format objects
         fmt = parts[i]
+
+        if(fmt.spec !== undefined){
+            // "spec" may contain "nested replacement fields"
+            // In this case, evaluate them using the positional
+            // or keyword arguments passed to format()
+            function replace_nested(name, key){
+                if(/\d+/.exec(key)){
+                    // If key is numeric, search in positional
+                    // arguments
+                    return _b_.tuple.__getitem__($.$args,
+                        parseInt(key))
+                }else{
+                    // Else try in keyword arguments
+                    return _b_.dict.__getitem__($.$kw, key)
+                }
+            }
+            fmt.spec = fmt.spec.replace(/\{(.*?)\}/g,
+                replace_nested)
+        }
         if(fmt.name.charAt(0).search(/\d/) > -1){
             // Numerical reference : use positional arguments
             var pos = parseInt(fmt.name),
@@ -1234,18 +1276,16 @@ str.join = function(){
 
     var iterable = _b_.iter($.iterable),
         res = [],
-        count = 0,
-        ce = $B.current_exception
+        count = 0
     while(1){
         try{
             var obj2 = _b_.next(iterable)
             if(! isinstance(obj2, str)){throw _b_.TypeError.$factory(
                 "sequence item " + count + ": expected str instance, " +
-                $B.get_class(obj2).__name__ + " found")}
+                $B.class_name(obj2) + " found")}
             res.push(obj2)
         }catch(err){
             if(_b_.isinstance(err, _b_.StopIteration)){
-                $B.current_exception = ce
                 break
             }
             else{throw err}
@@ -1281,8 +1321,6 @@ str.maketrans = function() {
         ["x", "y", "z"], arguments, {y: null, z: null}, null, null)
 
     var _t = _b_.dict.$factory()
-    // make 'default' translate table
-    for(var i  =0; i < 256; i++){_t.$numeric_dict[i] = i}
 
     if($.y === null && $.z === null){
         // If there is only one argument, it must be a dictionary mapping
@@ -1307,7 +1345,7 @@ str.maketrans = function() {
                 throw _b_.TypeError.$factory("dictionary value " + v +
                     " is not None, integer or string")
             }
-            _t.$numeric_dict[k] = v
+            _b_.dict.$setitem(_t, k, v)
         }
         return _t
     }else{
@@ -1333,11 +1371,12 @@ str.maketrans = function() {
                 }
             }
             for(var i = 0, len = $.x.length; i < len; i++){
-                _t.$numeric_dict[_b_.ord($.x.charAt(i))] =
-                    _b_.ord($.y.charAt(i))
+                var key = _b_.ord($.x.charAt(i)),
+                    value = $.y.charAt(i)
+                _b_.dict.$setitem(_t, key, value)
             }
             for(var k in toNone){
-                _t.$numeric_dict[k] = _b_.None
+                _b_.dict.$setitem(_t, parseInt(k), _b_.None)
             }
             return _t
         }
@@ -1381,7 +1420,7 @@ str.replace = function(self, old, _new, count) {
     check_str(_new)
     // Validate instance type of 'count'
     if(! isinstance(count,[_b_.int, _b_.float])){
-        throw _b_.TypeError.$factory("'" + $B.get_class(count).__name__ +
+        throw _b_.TypeError.$factory("'" + $B.class_name(count) +
             "' object cannot be interpreted as an integer")
     }else if(isinstance(count, _b_.float)){
         throw _b_.TypeError.$factory("integer argument expected, got float")
@@ -1620,7 +1659,7 @@ str.startswith = function(){
 
     var s = $.self.substring($.start, $.end)
     for(var i = 0, len = prefixes.length; i < len; i++){
-        prefix = prefixes[i]
+        var prefix = prefixes[i]
         if(! _b_.isinstance(prefix, str)){throw _b_.TypeError.$factory(
             "endswith first arg must be str or a tuple of str, not int")}
         if(s.substr(0, prefix.length) == prefix){return true}
@@ -1646,15 +1685,18 @@ str.strip = function(){
     return $.self.substring(i, j + 1)
 }
 
-str.translate = function(self,table){
+str.translate = function(self, table){
     var res = [],
-        pos = 0
-    if(isinstance(table, _b_.dict)){
-       for(var i = 0, len = self.length; i < len; i++){
-           var repl = _b_.dict.get(table,self.charCodeAt(i), -1)
-           if(repl == -1){res[pos++] = self.charAt(i)}
-           else if(repl !== None){res[pos++] = _b_.chr(repl)}
-       }
+        getitem = $B.$getattr(table, "__getitem__")
+    for(var i = 0, len = self.length; i < len; i++){
+        try{
+            var repl = getitem(self.charCodeAt(i))
+            if(repl !== _b_.None){
+                res.push(repl)
+            }
+        }catch(err){
+            res.push(self.charAt(i))
+        }
     }
     return res.join("")
 }
@@ -1673,8 +1715,7 @@ str.zfill = function(self, width){
     }
 }
 
-str.$factory = function(arg){
-    //console.log("str", arg)
+str.$factory = function(arg, encoding, errors){
     if(arg === undefined){console.log("undef"); return "<undefined>"}
     switch(typeof arg) {
         case "string":
@@ -1693,21 +1734,28 @@ str.$factory = function(arg){
             var func = $B.$getattr(arg.__class__, "__str__")
             return func(arg)
         }
-        var f = getattr(arg,"__str__")
-        // XXX fix : if not better than object.__str__, try __repr__
-        //return f()
+        if(arg.__class__ && arg.__class__ === _b_.bytes &&
+                encoding !== undefined){
+            // str(bytes, encoding, errors) is equal to
+            // bytes.decode(encoding, errors)
+            return _b_.bytes.decode(arg, encoding || "utf-8",
+                errors || "strict")
+        }
+        var f = $B.$getattr(arg, "__str__", null)
+        if(f === null ||
+                // if not better than object.__str__, try __repr__
+                (arg.__class__ && arg.__class__ !== _b_.object &&
+                f.$infos && f.$infos.__func__ === _b_.object.__str__)){
+            var f = $B.$getattr(arg, "__repr__")
+        }
     }
     catch(err){
-        console.log("pas de __str__ pour", arg)
+        console.log("no __str__ for", arg)
         console.log("err ", err)
-        try{ // try __repr__
-             var f = getattr(arg,"__repr__")
-        }catch(err){
-             if($B.debug > 1){console.log(err)}
-             console.log("Warning - no method __str__ or __repr__, " +
-                 "default to toString", arg)
-             return arg.toString()
-        }
+        if($B.debug > 1){console.log(err)}
+        console.log("Warning - no method __str__ or __repr__, " +
+            "default to toString", arg)
+        return arg.toString()
     }
     return $B.$call(f)()
 }
@@ -1725,7 +1773,10 @@ $B.set_func_names(str, "builtins")
 var StringSubclass = $B.StringSubclass = {
     __class__: _b_.type,
     __mro__: [object],
-    __name__: "str",
+    $infos: {
+        __module__: "builtins",
+        __name__: "str"
+    },
     $is_class: true
 }
 
@@ -1759,7 +1810,6 @@ _b_.str = str
 
 // Function to parse the 2nd argument of format()
 $B.parse_format_spec = function(spec){
-
     if(spec == ""){this.empty = true}
     else{
         var pos = 0,
@@ -1810,6 +1860,13 @@ $B.parse_format_spec = function(spec){
             car = spec.charAt(pos)
         }
         if(this.width !== undefined){this.width = parseInt(this.width)}
+        if(this.width === undefined && car == "{"){
+            // Width is determined by a parameter
+            var end_param_pos = spec.substr(pos).search("}")
+            this.width = spec.substring(pos, end_param_pos)
+            console.log("width", "[" + this.width + "]")
+            pos += end_param_pos + 1
+        }
         if(car == ","){this.comma = true; pos++; car = spec.charAt(pos)}
         if(car == "."){
             if(digits.indexOf(spec.charAt(pos + 1)) == -1){
@@ -1832,7 +1889,7 @@ $B.parse_format_spec = function(spec){
             car = spec.charAt(pos)
         }
         if(pos !== spec.length){
-            throw _b_.ValueError.$factory("Invalid format specifier")
+            throw _b_.ValueError.$factory("Invalid format specifier: " + spec)
         }
     }
     this.toString = function(){

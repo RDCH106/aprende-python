@@ -1,10 +1,12 @@
 from browser import console
 import asyncio
 
+from async_manager import AsyncTestManager
 
-@asyncio.coroutine
-def wait_secs(s, result):
-    yield from asyncio.sleep(s)
+aio = AsyncTestManager()
+
+async def wait_secs(s, result):
+    await asyncio.sleep(s)
     console.log("Returning result", result)
     return result
 
@@ -27,6 +29,3 @@ def test_simple_coroutine():
     console.log("asserting")
     assert fut.result() == result, "yield from future should return its result"
     assert result == 10, "Future result different from expected"
-
-
-

@@ -251,7 +251,7 @@ class B(A):
 
 assert type(B) == Meta
 
-
+# name mangling
 class TestMangling:
     def test(self):
         try:
@@ -262,5 +262,107 @@ class TestMangling:
 t = TestMangling()
 t.test()
 
+# call __instancecheck__ for isinstance()
+class Enumeration(type):
+    def __instancecheck__(self, other):
+        return True
+
+
+class EnumInt(int, metaclass=Enumeration):
+    pass
+
+assert isinstance('foo', EnumInt)
+
+# metaclass with multiple inheritance
+class Meta(type):
+    pass
+
+class A(metaclass=Meta):
+    pass
+
+class B(str, A):
+    pass
+
+assert B.__class__ == Meta
+
+class C:
+    pass
+
+class D(A, C):
+    pass
+
+assert D.__class__ == Meta
+
+class Meta1(type):
+    pass
+class Meta2(type):
+    pass
+
+class A1(metaclass=Meta1):
+    pass
+class A2(metaclass=Meta2):
+    pass
+
+try:
+    class B(A1, A2):
+        pass
+    raise Exception("should have raised TypeError")
+except TypeError:
+    pass
+
+class Meta3(Meta1):
+    pass
+
+class A3(metaclass=Meta3):
+    pass
+
+class C(A3, A1):
+    pass
+
+assert C.__class__ == Meta3
+
+# issue 905
+class A:
+    prop: str
+
+class B(A):
+    pass
+
+assert {'prop': str} == B.__annotations__
+
+# issue 922
+class A:
+    __slots__ = ['_r']
+    x = 0
+    def __getattr__(self, name):
+        A.x = "getattr"
+    def __setattr__(self,name,value):
+        A.x = "setattr"
+
+a = A()
+a.b
+assert A.x == "getattr"
+a.b = 9
+assert A.x == "setattr"
+
+# issue 1012
+class test:
+
+    nb_set = 0
+
+    def __init__(self):
+        self.x = 1
+
+    @property
+    def x(self):
+        return 'a'
+
+    @x.setter
+    def x(self, val):
+        test.nb_set += 1
+
+t = test()
+assert t.x == "a"
+assert test.nb_set == 1, test.nb_set
 
 print('passed all tests..')

@@ -31,16 +31,19 @@ if($B.brython_path === undefined){
 
 
 // Get the URL of the directory where the script stands
-var $href = $B.script_path = _window.location.href
-var $href_elts = $href.split('/')
-$href_elts.pop()
-var $script_dir = $B.script_dir = $href_elts.join('/')
+var path = _window.location.origin + _window.location.pathname,
+    path_elts = path.split("/")
+path_elts.pop()
+var $script_dir = $B.script_dir = path_elts.join("/")
 
 // Populated in py2js.brython(), used for sys.argv
 $B.__ARGV = []
 
 // Mapping between a module name and its path (url)
 $B.$py_module_path = {}
+
+// File cache
+$B.file_cache = {}
 
 // Mapping between a Python module name and its source code
 $B.$py_src = {}
@@ -59,9 +62,6 @@ $B.imported = {}
 
 // Maps the name of modules to the matching Javascript code
 $B.precompiled = {}
-
-// Distionary used to save the loval variables of a generator
-$B.vars = {}
 
 // Maps block names to a dictionary indexed by names defined as global
 // inside the block
@@ -95,6 +95,8 @@ $B.__setattr__ = function(attr,value){
 // cf http://stackoverflow.com/questions/1043339/javascript-for-detecting-browser-language-preference
 $B.language = _window.navigator.userLanguage || _window.navigator.language
 
+$B.locale = "C" // can be reset by locale.setlocale
+
 if(isWebWorker){
     $B.charset = "utf-8"
 }else{
@@ -103,12 +105,12 @@ if(isWebWorker){
 }
 
 // minimum and maximum safe integers
-$B.max_int = Math.pow(2,53) - 1
+$B.max_int = Math.pow(2, 53) - 1
 $B.min_int = -$B.max_int
 
 // Used to compute the hash value of some objects (see
 // py_builtin_functions.js)
-$B.$py_next_hash = Math.pow(2,53) - 1
+$B.$py_next_hash = Math.pow(2, 53) - 1
 
 // $py_UUID guarantees a unique id.  Do not use this variable
 // directly, use the $B.UUID function defined in py_utils.js
@@ -117,14 +119,21 @@ $B.$py_UUID = 0
 // Magic name used in lambdas
 $B.lambda_magic = Math.random().toString(36).substr(2, 8)
 
-// Callback functions indexed by their name
-// Used to print a traceback if an exception is raised when the function
-// is triggered by a DOM event
-$B.callbacks = {}
-
 // Set __name__ attribute of klass methods
 $B.set_func_names = function(klass, module){
-    var name = klass.__name__
+    if(klass.$infos){
+        var name = klass.$infos.__name__
+        klass.$infos.__module__ = module
+        klass.$infos.__qualname__ = name
+    }else{
+        var name = klass.__name__
+        console.log("bizarre", klass)
+        klass.$infos = {
+            __name__: name,
+            __module__: module,
+            __qualname__: name
+        }
+    }
     klass.__module__ = module
     for(var attr in klass){
         if(typeof klass[attr] == 'function'){
@@ -166,6 +175,21 @@ if(has_storage){
 $B.globals = function(){
     // Can be used in Javascript console to inspect global namespace
     return $B.frames_stack[$B.frames_stack.length - 1][3]
+}
+
+$B.$options = {}
+
+// Can be used in Javascript programs to run Python code
+$B.python_to_js = function(src, script_id){
+    $B.meta_path = $B.$meta_path.slice()
+    if(!$B.use_VFS){$B.meta_path.shift()}
+    if(script_id === undefined){script_id = "__main__"}
+
+    var root = __BRYTHON__.py2js(src, script_id, script_id),
+        js = root.to_js()
+
+    js = "var $locals_" + script_id + " = {}\n" + js
+    return js
 }
 
 // copied from https://raw.githubusercontent.com/mathiasbynens/mothereff.in/master/js-variables/eff.js
