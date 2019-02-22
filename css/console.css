@@ -49,5 +49,6 @@ font-weight:bold;
 }
 
 #share_iframe {
-padding-top: 30px;
+width:100%;  
+padding-top:30px;
 }
