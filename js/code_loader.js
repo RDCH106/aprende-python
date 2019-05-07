@@ -1,3 +1,4 @@
+// https://stackoverflow.com/a/901144/9739532
 function getParameterByName(name, url) {
     if (!url) { url = window.location.href; }
     name = name.replace(/[\[\]]/g, "\\$&");
@@ -8,6 +9,7 @@ function getParameterByName(name, url) {
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
+// https://stackoverflow.com/a/17901198/9739532
 function load(url)
 {
     req = new XMLHttpRequest();
