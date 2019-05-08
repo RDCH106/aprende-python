@@ -21,20 +21,16 @@ function load(url)
                 //alert(req.responseText);
                 window.ace.edit("editor").setValue(req.responseText, 1);  // https://stackoverflow.com/a/18629202
             } else {
-                alert(req.statusText);
+                alert("Code Source: " + url + "\n\n" + req.statusText);
             }
         }
     };
     req.send(null);
-
-    return req.responseText; 
 }
 
 function getCodeSource(){
     var source_code = getParameterByName('code_source');
     if(source_code != null){
-        return load(source_code);    
-    }else{
-        return null;
-    }        
+        load(source_code);    
+    }       
 }
