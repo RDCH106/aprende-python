@@ -13,7 +13,18 @@ function getParameterByName(name, url) {
 function load(url)
 {
     req = new XMLHttpRequest();
-    req.open("GET", url, false);
+    req.open("GET", url, true);
+    // https://developer.mozilla.org/es/docs/Web/API/XMLHttpRequest/Synchronous_and_Asynchronous_Requests
+    req.onload = function (e) {
+        if (req.readyState === 4) {
+            if (req.status === 200) {
+                //alert(req.responseText);
+                window.ace.edit("editor").setValue(req.responseText, 1);  // https://stackoverflow.com/a/18629202
+            } else {
+                alert(req.statusText);
+            }
+        }
+    };
     req.send(null);
 
     return req.responseText; 
@@ -22,7 +33,7 @@ function load(url)
 function getCodeSource(){
     var source_code = getParameterByName('code_source');
     if(source_code != null){
-        return load(source_code);
+        return load(source_code);    
     }else{
         return null;
     }        
