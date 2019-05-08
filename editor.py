@@ -41,6 +41,7 @@ if 'set_debug' in doc:
     __BRYTHON__.debug = int(doc['set_debug'].checked)
 
 def reset_src():
+    window.getCodeSource();
     if storage is not None and "py_src" in storage:
         editor.setValue(storage["py_src"])
     else:
