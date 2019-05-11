@@ -34,3 +34,5 @@ Con esta url sólo tenemos que llamar al editor de la siguiente forma:
 ```
 https://raw.githack.com/RDCH106/aprende-python/master/python-editor.html?code_source=https://raw.githubusercontent.com/RDCH106/aprende-python/master/js/code_loader/python_code.py
 ```
+
+👀 El IDE Python Online puede cargar cualquier código, si la url apunta al recursos directamente, pudiendo cargar código no sólamente alojado en GitHub
