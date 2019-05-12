@@ -7,6 +7,14 @@
 - ⌨️ [Consola Python Online](https://raw.githack.com/RDCH106/aprende-python/master/python-console.html) (Proyecto [Brython](https://github.com/brython-dev/brython))
 - ⌨️ [IDE Python Online](https://raw.githack.com/RDCH106/aprende-python/master/python-editor.html)
 
+#### ⚖️ Licencia
+
+Toda la obra expuesta en este repositorio está sejueta a licencia [MIT](https://github.com/RDCH106/aprende-python/blob/master/LICENSE), incluyendo tanto las herramientas como el código de snippets y ejercicios.
+
+La obra incluye el software Brython con licencia [BSD 3-Clause](https://github.com/brython-dev/brython/blob/master/LICENCE.txt) compatible con la licencia MIT. El repsositorio incluye la licencia en:
+
+https://github.com/RDCH106/aprende-python/blob/master/brython/LICENSE.txt
+
 ## Consola Python Online
 
 La Consola Python Online permite usar el intérprete [Brython](https://github.com/brython-dev/brython) como si se tratase del intérprete de Python desde una consola.
