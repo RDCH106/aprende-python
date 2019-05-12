@@ -1,5 +1,5 @@
 """
-Objectivo: Crear un string (cadena), un int (entero) y un float(decimal)
+Objetivo: Crear un string (cadena), un int (entero) y un float(decimal)
 que cumplan:
 
 • El string debe llamarse "myString" y tiene que tener el valor "hola"
