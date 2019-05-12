@@ -1,3 +1,4 @@
 myInt = 7
 
-print("Número entero: " + myInt)
+print("Número entero: ")
+print(myInt)
