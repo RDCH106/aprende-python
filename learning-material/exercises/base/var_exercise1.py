@@ -6,6 +6,7 @@ que cumplan:
 • El float debe llamarse "myFloat" y tiene que tener el valor 10.0
 • El int debe llamarse myInt" y tiene que tener el valor 20
 
+Pista: Verás impresos los valores si realizaste correctamente el ejercicio
 """
 
 # Cambia este código
