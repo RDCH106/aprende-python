@@ -1,6 +1,6 @@
 # Aprende Python
 [![Python España](https://img.shields.io/badge/Python-Espa%C3%B1a-blue.svg?maxAge=31536000&logo=github&colorA=e60000&colorB=ffcc12&style=flat)](https://www.es.python.org)
-[![GitHub](https://img.shields.io/github/license/rdch106/aprende-python.svg)](https://github.com/RDCH106/aprende-python/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/rdch106/aprende-python.svg)](https://github.com/RDCH106/aprende-python/blob/master/LICENSE)
 
 📚 Aprende a programar en 🐍 Python
 
