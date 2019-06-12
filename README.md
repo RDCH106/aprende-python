@@ -9,7 +9,7 @@
 
 #### ⚖️ Licencia
 
-Toda la obra expuesta en este repositorio está sejueta a licencia [MIT](https://github.com/RDCH106/aprende-python/blob/master/LICENSE), incluyendo tanto las herramientas como el código de snippets y ejercicios.
+Toda la obra expuesta en este repositorio está sujeta a licencia [MIT](https://github.com/RDCH106/aprende-python/blob/master/LICENSE), incluyendo tanto las herramientas como el código de snippets y ejercicios.
 
 La obra incluye el software Brython con licencia [BSD 3-Clause](https://github.com/brython-dev/brython/blob/master/LICENCE.txt) compatible con la licencia MIT. El repositorio incluye la licencia en:
 
