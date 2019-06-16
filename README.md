@@ -9,9 +9,9 @@
 
 #### ⚖️ Licencia
 
-Toda la obra expuesta en este repositorio está sejueta a licencia [MIT](https://github.com/RDCH106/aprende-python/blob/master/LICENSE), incluyendo tanto las herramientas como el código de snippets y ejercicios.
+Toda la obra expuesta en este repositorio está sujeta a licencia [MIT](https://github.com/RDCH106/aprende-python/blob/master/LICENSE), incluyendo tanto las herramientas como el código de snippets y ejercicios.
 
-La obra incluye el software Brython con licencia [BSD 3-Clause](https://github.com/brython-dev/brython/blob/master/LICENCE.txt) compatible con la licencia MIT. El repsositorio incluye la licencia en:
+La obra incluye el software Brython con licencia [BSD 3-Clause](https://github.com/brython-dev/brython/blob/master/LICENCE.txt) compatible con la licencia MIT. El repositorio incluye la licencia en:
 
 https://github.com/RDCH106/aprende-python/blob/master/brython/LICENSE.txt
 
@@ -23,7 +23,7 @@ Actualmente la Consola Python Online corre sobre: [![Brython](https://img.shield
 
 ## IDE Python Online 
 
-El IDE Python Online es una adpatación del intérprete [Brython](https://github.com/brython-dev/brython) que permite ejecutar código Python como si del intérprete oficial se tratase.
+El IDE Python Online es una adaptación del intérprete [Brython](https://github.com/brython-dev/brython) que permite ejecutar código Python como si del intérprete oficial se tratase.
 
 Actualmente el IDE Python Online corre sobre: [![Brython](https://img.shields.io/badge/🐍_Brython-3.7.0-blue.svg?style=flat)](https://github.com/brython-dev/brython/releases/tag/3.7.0)
 
