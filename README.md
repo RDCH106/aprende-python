@@ -4,8 +4,10 @@
 
 📚 Aprende a programar en 🐍 Python
 
-- ⌨️ [Consola Python Online](https://raw.githack.com/RDCH106/aprende-python/master/python-console.html) (Proyecto [Brython](https://github.com/brython-dev/brython))
+- ⌨️ [Consola Python Online](https://raw.githack.com/RDCH106/aprende-python/master/python-console.html) 
 - ⌨️ [IDE Python Online](https://raw.githack.com/RDCH106/aprende-python/master/python-editor.html)
+
+_\*Ambas herramientas usan el proyecto [Brython](https://github.com/brython-dev/brython) como base._
 
 #### ⚖️ Licencia
 
