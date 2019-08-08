@@ -12,6 +12,9 @@
     - [Suma vs Concatenación de cadenas](https://raw.githack.com/RDCH106/aprende-python/master/python-editor.html?code_source=https://raw.githubusercontent.com/RDCH106/aprende-python/master/learning-material/snippets/base/var_concatenate.py)
     - [Suma vs Concatenación de cadenas 2](https://raw.githack.com/RDCH106/aprende-python/master/python-editor.html?code_source=https://raw.githubusercontent.com/RDCH106/aprende-python/master/learning-material/snippets/base/var_concatenate_2.py)
     - [Asignación múltiple de variables](https://raw.githack.com/RDCH106/aprende-python/master/python-editor.html?code_source=https://raw.githubusercontent.com/RDCH106/aprende-python/master/learning-material/snippets/base/var_assignation.py)
+3. Listas
+    - [Definición de listas](https://raw.githack.com/RDCH106/aprende-python/master/python-editor.html?code_source=https://raw.githubusercontent.com/RDCH106/aprende-python/master/learning-material/snippets/base/var_list.py)
+    - [Definición de listas 2](https://raw.githack.com/RDCH106/aprende-python/master/python-editor.html?code_source=https://raw.githubusercontent.com/RDCH106/aprende-python/master/learning-material/snippets/base/var_list_2.py)
 
 ## ✏️ Ejercicios
 
