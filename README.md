@@ -21,13 +21,13 @@ https://github.com/RDCH106/aprende-python/blob/master/brython/LICENSE.txt
 
 La Consola Python Online permite usar el intérprete [Brython](https://github.com/brython-dev/brython) como si se tratase del intérprete de Python desde una consola.
 
-Actualmente la Consola Python Online corre sobre: [![Brython](https://img.shields.io/badge/🐍_Brython-3.7.4-blue.svg?style=flat)](https://github.com/brython-dev/brython/releases/tag/3.7.0)
+Actualmente la Consola Python Online corre sobre: [![Brython](https://img.shields.io/badge/🐍_Brython-3.7.4-blue.svg?style=flat)](https://github.com/brython-dev/brython/releases/tag/3.7.4)
 
 ## IDE Python Online 
 
 El IDE Python Online es una adaptación del intérprete [Brython](https://github.com/brython-dev/brython) que permite ejecutar código Python como si del intérprete oficial se tratase.
 
-Actualmente el IDE Python Online corre sobre: [![Brython](https://img.shields.io/badge/🐍_Brython-3.7.4-blue.svg?style=flat)](https://github.com/brython-dev/brython/releases/tag/3.7.0)
+Actualmente el IDE Python Online corre sobre: [![Brython](https://img.shields.io/badge/🐍_Brython-3.7.4-blue.svg?style=flat)](https://github.com/brython-dev/brython/releases/tag/3.7.4)
 
 Adicionalmente se le ha incluido la posibilidad de cargar código si se facilita la fuente de código durante la llamada al editor usando el parámetro  `code_source`.
 
